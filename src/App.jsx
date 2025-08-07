@@ -160,14 +160,14 @@ const App = () => {
           type="number"
           value={value}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className={`w-full px-4 py-3 rounded-lg border ${
+          className={`w-full px-3 py-2 rounded-lg border ${
             darkMode 
               ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' 
               : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-          } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors`}
+          } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
         />
         {suffix && (
-          <span className={`absolute right-3 top-3 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+          <span className={`absolute right-2 top-2 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
             {suffix}
           </span>
         )}
@@ -176,14 +176,14 @@ const App = () => {
   );
 
   const MetricCard = ({ title, value, icon: Icon, format = "number" }) => (
-    <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg`}>
-      <div className="flex items-center justify-between mb-4">
-        <Icon className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+    <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg`}>
+      <div className="flex items-center justify-between mb-3">
+        <Icon className={`w-4 h-4 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
       </div>
-      <h3 className={`text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+      <h3 className={`text-xs font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
         {title}
       </h3>
-      <p className={`text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+      <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
         {format === "currency" ? `$${(value / 1000000).toFixed(1)}M` :
          format === "percentage" ? `${(value * 100).toFixed(1)}%` :
          value.toFixed(2)}
@@ -193,22 +193,22 @@ const App = () => {
 
   if (currentPage === 'landing') {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
-        <div className="text-center max-w-4xl mx-auto px-8">
-          <h1 className={`text-5xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} px-4 sm:px-8`}>
+        <div className="text-center max-w-4xl mx-auto">
+          <h1 className={`text-3xl sm:text-5xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             Block Three Capital
           </h1>
-          <h2 className={`text-2xl mb-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          <h2 className={`text-lg sm:text-2xl mb-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
             Precision Risk + Treasury Structuring for Bitcoin Institutions
           </h2>
-          <p className={`text-lg mb-12 max-w-2xl mx-auto ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+          <p className={`text-base sm:text-lg mb-8 max-w-2xl mx-auto ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
             Optimize BTC treasuries with elite models for NAV audit, dilution mitigation, convertibles, LTV loans, ROE optimization, and preferred bundles.
           </p>
           <button
             onClick={() => setCurrentPage('assumptions')}
-            className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
           >
-            <Play className="w-5 h-5 mr-2" />
+            <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Get Started
           </button>
         </div>
@@ -218,14 +218,14 @@ const App = () => {
 
   if (currentPage === 'assumptions') {
     return (
-      <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-8`}>
+      <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
         <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+            <div className="mb-4 sm:mb-0">
+              <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Model Assumptions
               </h1>
-              <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2`}>
+              <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
                 Configure parameters for risk analysis and treasury optimization
               </p>
             </div>
@@ -233,13 +233,13 @@ const App = () => {
               onClick={() => setDarkMode(!darkMode)}
               className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
             >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-8 mb-8">
-            <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 BTC Parameters
               </h3>
               <InputField
@@ -256,8 +256,8 @@ const App = () => {
               />
             </div>
 
-            <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Model Parameters
               </h3>
               <SliderInput
@@ -287,8 +287,8 @@ const App = () => {
               />
             </div>
 
-            <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Debt Parameters
               </h3>
               <InputField
@@ -322,16 +322,16 @@ const App = () => {
             <button
               onClick={handleCalculate}
               disabled={isCalculating}
-              className="bg-blue-600 text-white px-12 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
             >
               {isCalculating ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                   Running Models ({calculationProgress}%)
                 </>
               ) : (
                 <>
-                  <Calculator className="w-5 h-5 mr-3" />
+                  <Calculator className="w-4 h-4 mr-2" />
                   Run Models
                 </>
               )}
@@ -356,43 +356,43 @@ const App = () => {
   if (currentPage === 'dashboard' && results) {
     return (
       <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
-        <nav className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-b px-8 py-4`}>
-          <div className="flex justify-between items-center">
-            <h1 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <nav className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-b px-4 sm:px-8 py-3`}>
+          <div className="flex flex-col sm:flex-row justify-between items-center">
+            <h1 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 sm:mb-0`}>
               Block Three Capital - Risk Dashboard
             </h1>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center space-x-2 sm:space-x-4">
               <button
                 onClick={() => setBespokePanelOpen(!bespokePanelOpen)}
-                className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
-                <Sliders className="w-4 h-4 mr-2" />
+                <Sliders className="w-4 h-4 mr-1" />
                 Bespoke Mode
               </button>
               <button
-                className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
-                <Download className="w-4 h-4 mr-2" />
+                <Download className="w-4 h-4 mr-1" />
                 Export CSV
               </button>
               <button
-                className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
-                <FileText className="w-4 h-4 mr-2" />
+                <FileText className="w-4 h-4 mr-1" />
                 Export PDF
               </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
               >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
             </div>
           </div>
         </nav>
 
-        <div className="p-8">
-          <div className="grid grid-cols-5 gap-6 mb-8">
+        <div className="p-4 sm:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
             <MetricCard
               title="Portfolio Value"
               value={results.preferred_bundle.bundle_value}
@@ -425,12 +425,12 @@ const App = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-8 mb-8">
-            <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8">
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 NAV Path Simulation
               </h3>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={results.nav.nav_paths}>
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
@@ -449,11 +449,11 @@ const App = () => {
               </div>
             </div>
 
-            <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 LTV Risk Distribution
               </h3>
-              <div className="h-64">
+              <div className="h-48 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={results.ltv.ltv_distribution}>
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
@@ -479,49 +479,49 @@ const App = () => {
             </div>
           </div>
 
-          <div className={`p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Scenario Analysis
             </h3>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <th className={`text-left py-3 px-4 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Scenario</th>
-                    <th className={`text-right py-3 px-4 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
-                    <th className={`text-right py-3 px-4 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
-                    <th className={`text-right py-3 px-4 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
-                    <th className={`text-right py-3 px-4 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Probability</th>
+                    <th className={`text-left py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Scenario</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Probability</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-3 px-4 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bull Case</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$75,000</td>
-                    <td className="py-3 px-4 text-right font-medium text-green-400">+45%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>32%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bull Case</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$75,000</td>
+                    <td className="py-2 px-3 text-right font-medium text-green-400">+45%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>32%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
                   </tr>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-3 px-4 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Base Case</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$55,000</td>
-                    <td className="py-3 px-4 text-right font-medium text-green-400">+18%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>45%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>40%</td>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Base Case</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$55,000</td>
+                    <td className="py-2 px-3 text-right font-medium text-green-400">+18%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>45%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>40%</td>
                   </tr>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-3 px-4 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bear Case</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$35,000</td>
-                    <td className="py-3 px-4 text-right font-medium text-red-400">-15%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>68%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bear Case</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$35,000</td>
+                    <td className="py-2 px-3 text-right font-medium text-red-400">-15%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>68%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
                   </tr>
                   <tr>
-                    <td className={`py-3 px-4 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Stress Test</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$20,000</td>
-                    <td className="py-3 px-4 text-right font-medium text-red-400">-45%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>95%</td>
-                    <td className={`py-3 px-4 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>10%</td>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Stress Test</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$20,000</td>
+                    <td className="py-2 px-3 text-right font-medium text-red-400">-45%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>95%</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>10%</td>
                   </tr>
                 </tbody>
               </table>
@@ -530,15 +530,15 @@ const App = () => {
         </div>
 
         {bespokePanelOpen && (
-          <div className={`fixed right-0 top-0 h-full w-96 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
-            <div className="p-6">
+          <div className={`fixed inset-0 sm:right-0 sm:top-0 sm:h-full sm:w-80 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Bespoke Analysis
                 </h3>
                 <button
                   onClick={() => setBespokePanelOpen(false)}
-                  className={`p-2 rounded-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+                  className={`p-2 rounded-lg text-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
                 >
                   ×
                 </button>
@@ -546,7 +546,7 @@ const App = () => {
               
               <div className="space-y-6">
                 <div>
-                  <h4 className={`font-medium mb-3 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     What-If Scenarios
                   </h4>
                   <SliderInput
@@ -561,13 +561,13 @@ const App = () => {
                 </div>
                 
                 <div>
-                  <h4 className={`font-medium mb-3 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Optimization Controls
                   </h4>
-                  <button className="w-full mb-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <button className="w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
                     Optimize LTV Cap
                   </button>
-                  <button className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                  <button className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
                     Maximize ROE
                   </button>
                 </div>
@@ -580,19 +580,19 @@ const App = () => {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
-      <div className="text-center max-w-4xl mx-auto px-8">
-        <h1 className={`text-5xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} px-4 sm:px-8`}>
+      <div className="text-center max-w-4xl mx-auto">
+        <h1 className={`text-3xl sm:text-5xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           Block Three Capital
         </h1>
-        <h2 className={`text-2xl mb-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+        <h2 className={`text-lg sm:text-2xl mb-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
           Precision Risk + Treasury Structuring for Bitcoin Institutions
         </h2>
         <button
           onClick={() => setCurrentPage('assumptions')}
-          className="bg-blue-600 text-white\ px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
         >
-          <Play className="w-5 h-5 mr-2" />
+          <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
           Get Started
         </button>
       </div>
