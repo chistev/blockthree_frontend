@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './index.css';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -589,7 +590,7 @@ const App = () => {
         </h2>
         <button
           onClick={() => setCurrentPage('assumptions')}
-          className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
+          className="bg-blue-600 text-white\ px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
         >
           <Play className="w-5 h-5 mr-2" />
           Get Started
