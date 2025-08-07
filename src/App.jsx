@@ -14,7 +14,9 @@ import {
   Play,
   Sliders,
   Home,
-  Gauge
+  Gauge,
+  Download,
+  FileText
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -367,6 +369,18 @@ const App = () => {
                 Bespoke Mode
               </button>
               <button
+                className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Export PDF
+              </button>
+              <button
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
               >
@@ -586,4 +600,3 @@ const App = () => {
 };
 
 export default App;
-
