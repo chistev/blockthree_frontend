@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './index.css';
 import { 
   TrendingUp, 
@@ -150,16 +150,29 @@ const App = () => {
     </div>
   );
 
-  const InputField = ({ label, value, onChange, suffix = "" }) => (
+  const InputField = ({ label, value, onChange, suffix = "" }) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value); // sync if parent updates
+  }, [value]);
+
+  const handleBlur = () => {
+    const parsed = parseFloat(localValue);
+    onChange(isNaN(parsed) ? 0 : parsed);
+  };
+
+  return (
     <div className="mb-4">
       <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
         {label}
       </label>
       <div className="relative">
         <input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          type="text"
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={handleBlur}
           className={`w-full px-3 py-2 rounded-lg border ${
             darkMode 
               ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' 
@@ -174,6 +187,7 @@ const App = () => {
       </div>
     </div>
   );
+};
 
   const MetricCard = ({ title, value, icon: Icon, format = "number" }) => (
     <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg`}>
