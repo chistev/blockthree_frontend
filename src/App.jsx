@@ -37,6 +37,8 @@ const App = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState(0);
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
+  const [isWhatIfLoading, setIsWhatIfLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const [assumptions, setAssumptions] = useState({
     BTC_0: 45000,
@@ -51,76 +53,226 @@ const App = () => {
     TreasurySize: 50000000,
     EquityRaise: 100000000,
     K: 50000,
-    beta_ROE: 1.2
+    beta_ROE: 1.2,
   });
   
   const [results, setResults] = useState(null);
 
-  const generateMockResults = () => {
-    const navPaths = [];
-    for (let i = 0; i < 100; i++) {
-      navPaths.push({
-        time: i / 100,
-        value: 50000000 + (Math.random() - 0.5) * 10000000
-      });
-    }
-
-    const ltvDistribution = [];
-    for (let i = 0; i < 50; i++) {
-      ltvDistribution.push({
-        ltv: 0.3 + i * 0.01,
-        frequency: Math.exp(-Math.pow((0.3 + i * 0.01 - 0.48) / 0.1, 2))
-      });
-    }
-
-    return {
-      nav: {
-        avg_nav: 52500000,
-        ci_lower: 48200000,
-        ci_upper: 56800000,
-        erosion_prob: 0.198,
-        nav_paths: navPaths
-      },
-      dilution: {
-        base_dilution: 0.15,
-        avg_dilution: 8500000
-      },
-      ltv: {
-        avg_ltv: 0.48,
-        exceed_prob: 0.12,
-        ltv_distribution: ltvDistribution
-      },
-      roe: {
-        avg_roe: 0.18
-      },
-      preferred_bundle: {
-        bundle_value: 58750000
-      }
-    };
-  };
-
   const handleCalculate = async () => {
     setIsCalculating(true);
     setCalculationProgress(0);
-    
+    setError(null);
+
     const progressInterval = setInterval(() => {
       setCalculationProgress(prev => Math.min(prev + 10, 90));
     }, 200);
-    
+
+    const backendAssumptions = {
+      BTC_t: assumptions.BTC_t,
+      BTC_0: assumptions.BTC_0,
+      mu: assumptions.mu,
+      sigma: assumptions.sigma,
+      t: assumptions.t,
+      paths: assumptions.paths,
+      LoanPrincipal: assumptions.LoanPrincipal,
+      C_Debt: assumptions.C_Debt,
+      LTV_Cap: assumptions.LTV_Cap,
+      S_0: assumptions.TreasurySize,
+      delta_S: assumptions.EquityRaise,
+      K: assumptions.K,
+      beta_ROE: assumptions.beta_ROE,
+    };
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const mockResults = generateMockResults();
-      setResults(mockResults);
+      const response = await fetch('http://127.0.0.1:8000/api/calculate/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assumptions: backendAssumptions,
+          format: 'json',
+          use_live: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const backendResults = await response.json();
+      const mappedResults = {
+        nav: {
+          avg_nav: backendResults.nav.avg_nav,
+          ci_lower: backendResults.nav.ci_lower,
+          ci_upper: backendResults.nav.ci_upper,
+          erosion_prob: backendResults.nav.erosion_prob,
+          nav_paths: backendResults.nav.nav_paths.map((value, index) => ({
+            time: index / 100,
+            value,
+          })),
+        },
+        dilution: {
+          base_dilution: backendResults.dilution.base_dilution,
+          avg_dilution: backendResults.dilution.avg_dilution,
+        },
+        ltv: {
+          avg_ltv: backendResults.ltv.avg_ltv,
+          exceed_prob: backendResults.ltv.exceed_prob,
+          ltv_distribution: backendResults.ltv.ltv_paths.map((ltv, index) => ({
+            ltv: 0.3 + index * 0.01,
+            frequency: ltv,
+          })),
+        },
+        roe: {
+          avg_roe: backendResults.roe.avg_roe,
+        },
+        preferred_bundle: {
+          bundle_value: backendResults.preferred_bundle.bundle_value,
+        },
+      };
+
+      setResults(mappedResults);
       setCalculationProgress(100);
       setCurrentPage('dashboard');
     } catch (err) {
       console.error('Calculation failed:', err);
+      setError('Failed to run models. Please try again.');
     } finally {
       clearInterval(progressInterval);
       setTimeout(() => {
         setIsCalculating(false);
         setCalculationProgress(0);
       }, 500);
+    }
+  };
+
+  const handleWhatIf = async (param, value) => {
+    setIsWhatIfLoading(true);
+    setError(null);
+
+    const backendAssumptions = {
+      BTC_t: assumptions.BTC_t,
+      BTC_0: assumptions.BTC_0,
+      mu: assumptions.mu,
+      sigma: assumptions.sigma,
+      t: assumptions.t,
+      paths: assumptions.paths,
+      LoanPrincipal: assumptions.LoanPrincipal,
+      C_Debt: assumptions.C_Debt,
+      LTV_Cap: assumptions.LTV_Cap,
+      S_0: assumptions.TreasurySize,
+      delta_S: assumptions.EquityRaise,
+      K: assumptions.K,
+      beta_ROE: assumptions.beta_ROE,
+    };
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/what_if/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          param,
+          value,
+          assumptions: backendAssumptions,
+          format: 'json',
+          use_live: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const backendResults = await response.json();
+      const mappedResults = {
+        nav: {
+          avg_nav: backendResults.nav.avg_nav,
+          ci_lower: backendResults.nav.ci_lower,
+          ci_upper: backendResults.nav.ci_upper,
+          erosion_prob: backendResults.nav.erosion_prob,
+          nav_paths: backendResults.nav.nav_paths.map((value, index) => ({
+            time: index / 100,
+            value,
+          })),
+        },
+        dilution: {
+          base_dilution: backendResults.dilution.base_dilution,
+          avg_dilution: backendResults.dilution.avg_dilution,
+        },
+        ltv: {
+          avg_ltv: backendResults.ltv.avg_ltv,
+          exceed_prob: backendResults.ltv.exceed_prob,
+          ltv_distribution: backendResults.ltv.ltv_paths.map((ltv, index) => ({
+            ltv: 0.3 + index * 0.01,
+            frequency: ltv,
+          })),
+        },
+        roe: {
+          avg_roe: backendResults.roe.avg_roe,
+        },
+        preferred_bundle: {
+          bundle_value: backendResults.preferred_bundle.bundle_value,
+        },
+      };
+
+      setResults(mappedResults);
+    } catch (err) {
+      console.error('What-If analysis failed:', err);
+      setError('What-If analysis failed. Please try again.');
+    } finally {
+      setIsWhatIfLoading(false);
+    }
+  };
+
+  const handleExport = async (format) => {
+    try {
+      const backendAssumptions = {
+        BTC_t: assumptions.BTC_t,
+        BTC_0: assumptions.BTC_0,
+        mu: assumptions.mu,
+        sigma: assumptions.sigma,
+        t: assumptions.t,
+        paths: assumptions.paths,
+        LoanPrincipal: assumptions.LoanPrincipal,
+        C_Debt: assumptions.C_Debt,
+        LTV_Cap: assumptions.LTV_Cap,
+        S_0: assumptions.TreasurySize,
+        delta_S: assumptions.EquityRaise,
+        K: assumptions.K,
+        beta_ROE: assumptions.beta_ROE,
+      };
+
+      const response = await fetch('http://127.0.0.1:8000/api/calculate/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assumptions: backendAssumptions,
+          format,
+          use_live: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `metrics.${format}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(`Export ${format} failed:`, err);
+      setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
     }
   };
 
@@ -151,43 +303,43 @@ const App = () => {
   );
 
   const InputField = ({ label, value, onChange, suffix = "" }) => {
-  const [localValue, setLocalValue] = useState(value);
+    const [localValue, setLocalValue] = useState(value);
 
-  useEffect(() => {
-    setLocalValue(value); // sync if parent updates
-  }, [value]);
+    useEffect(() => {
+      setLocalValue(value);
+    }, [value]);
 
-  const handleBlur = () => {
-    const parsed = parseFloat(localValue);
-    onChange(isNaN(parsed) ? 0 : parsed);
-  };
+    const handleBlur = () => {
+      const parsed = parseFloat(localValue);
+      onChange(isNaN(parsed) ? 0 : parsed);
+    };
 
-  return (
-    <div className="mb-4">
-      <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={handleBlur}
-          className={`w-full px-3 py-2 rounded-lg border ${
-            darkMode 
-              ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' 
-              : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-          } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
-        />
-        {suffix && (
-          <span className={`absolute right-2 top-2 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-            {suffix}
-          </span>
-        )}
+    return (
+      <div className="mb-4">
+        <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+          {label}
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            className={`w-full px-3 py-2 rounded-lg border ${
+              darkMode 
+                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' 
+                : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+            } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
+          />
+          {suffix && (
+            <span className={`absolute right-2 top-2 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+              {suffix}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   const MetricCard = ({ title, value, icon: Icon, format = "number" }) => (
     <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg`}>
@@ -351,7 +503,9 @@ const App = () => {
               )}
             </button>
           </div>
-
+          {error && (
+            <p className="text-red-500 text-sm mt-4 text-center">{error}</p>
+          )}
           {isCalculating && (
             <div className="mt-6 max-w-md mx-auto">
               <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
@@ -384,12 +538,14 @@ const App = () => {
                 Bespoke Mode
               </button>
               <button
+                onClick={() => handleExport('csv')}
                 className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
                 <Download className="w-4 h-4 mr-1" />
                 Export CSV
               </button>
               <button
+                onClick={() => handleExport('pdf')}
                 className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
               >
                 <FileText className="w-4 h-4 mr-1" />
@@ -406,6 +562,9 @@ const App = () => {
         </nav>
 
         <div className="p-4 sm:p-8">
+          {error && (
+            <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
             <MetricCard
               title="Portfolio Value"
@@ -565,8 +724,12 @@ const App = () => {
                   </h4>
                   <SliderInput
                     label="BTC Price Shock"
-                    value={0}
-                    onChange={() => {}}
+                    value={assumptions.BTC_t / assumptions.BTC_0 - 1}
+                    onChange={(value) => {
+                      const newBTC_t = assumptions.BTC_0 * (1 + value);
+                      setAssumptions({ ...assumptions, BTC_t: newBTC_t });
+                      handleWhatIf('BTC_t', newBTC_t);
+                    }}
                     min={-0.5}
                     max={0.5}
                     step={0.05}
@@ -578,10 +741,18 @@ const App = () => {
                   <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Optimization Controls
                   </h4>
-                  <button className="w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                  <button
+                    onClick={() => handleWhatIf('LTV_Cap', 'optimize')}
+                    disabled={isWhatIfLoading}
+                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
                     Optimize LTV Cap
                   </button>
-                  <button className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                  <button
+                    onClick={() => handleWhatIf('beta_ROE', 'maximize')}
+                    disabled={isWhatIfLoading}
+                    className={`w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
                     Maximize ROE
                   </button>
                 </div>
