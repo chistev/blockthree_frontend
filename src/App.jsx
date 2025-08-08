@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import './index.css';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Calculator, 
-  Shield, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Calculator,
+  Shield,
   DollarSign,
   Target,
   AlertTriangle,
@@ -19,15 +19,15 @@ import {
   Download,
   FileText
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  AreaChart, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
   Area
 } from 'recharts';
 
@@ -39,9 +39,10 @@ const App = () => {
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
   const [isWhatIfLoading, setIsWhatIfLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const [assumptions, setAssumptions] = useState({
-    BTC_0: 45000,
+    BTC_treasury: 1000,
+    BTC_current_market_price: null, // Initialize as null until live price is fetched
     BTC_t: 55000,
     mu: 0.42,
     sigma: 0.65,
@@ -55,8 +56,41 @@ const App = () => {
     K: 50000,
     beta_ROE: 1.2,
   });
-  
-  const [results, setResults] = useState(null);
+
+  // Fetch live Bitcoin price on component mount
+  useEffect(() => {
+    const fetchLiveBTCPrice = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.BTC_current_market_price) {
+          setAssumptions((prev) => ({
+            ...prev,
+            BTC_current_market_price: data.BTC_current_market_price,
+          }));
+        } else {
+          throw new Error('No BTC price in response');
+        }
+      } catch (err) {
+        console.error('Failed to fetch BTC price:', err);
+        setError('Failed to fetch live BTC price. Using default value.');
+        setAssumptions((prev) => ({
+          ...prev,
+          BTC_current_market_price: 45000, // Fallback to default if fetch fails
+        }));
+      }
+    };
+
+    fetchLiveBTCPrice();
+  }, []); // Empty dependency array to run once on mount
 
   const handleCalculate = async () => {
     setIsCalculating(true);
@@ -68,8 +102,9 @@ const App = () => {
     }, 200);
 
     const backendAssumptions = {
+      BTC_treasury: assumptions.BTC_treasury,
+      BTC_current_market_price: assumptions.BTC_current_market_price,
       BTC_t: assumptions.BTC_t,
-      BTC_0: assumptions.BTC_0,
       mu: assumptions.mu,
       sigma: assumptions.sigma,
       t: assumptions.t,
@@ -92,7 +127,7 @@ const App = () => {
         body: JSON.stringify({
           assumptions: backendAssumptions,
           format: 'json',
-          use_live: false,
+          use_live: true,
         }),
       });
 
@@ -152,8 +187,9 @@ const App = () => {
     setError(null);
 
     const backendAssumptions = {
+      BTC_treasury: assumptions.BTC_treasury,
+      BTC_current_market_price: assumptions.BTC_current_market_price,
       BTC_t: assumptions.BTC_t,
-      BTC_0: assumptions.BTC_0,
       mu: assumptions.mu,
       sigma: assumptions.sigma,
       t: assumptions.t,
@@ -178,7 +214,7 @@ const App = () => {
           value,
           assumptions: backendAssumptions,
           format: 'json',
-          use_live: false,
+          use_live: true,
         }),
       });
 
@@ -230,8 +266,9 @@ const App = () => {
   const handleExport = async (format) => {
     try {
       const backendAssumptions = {
+        BTC_treasury: assumptions.BTC_treasury,
+        BTC_current_market_price: assumptions.BTC_current_market_price,
         BTC_t: assumptions.BTC_t,
-        BTC_0: assumptions.BTC_0,
         mu: assumptions.mu,
         sigma: assumptions.sigma,
         t: assumptions.t,
@@ -253,7 +290,7 @@ const App = () => {
         body: JSON.stringify({
           assumptions: backendAssumptions,
           format,
-          use_live: false,
+          use_live: true,
         }),
       });
 
@@ -325,11 +362,10 @@ const App = () => {
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
             onBlur={handleBlur}
-            className={`w-full px-3 py-2 rounded-lg border ${
-              darkMode 
-                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' 
+            className={`w-full px-3 py-2 rounded-lg border ${darkMode
+                ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400'
                 : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-            } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
+              } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
           />
           {suffix && (
             <span className={`absolute right-2 top-2 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
@@ -351,11 +387,13 @@ const App = () => {
       </h3>
       <p className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
         {format === "currency" ? `$${(value / 1000000).toFixed(1)}M` :
-         format === "percentage" ? `${(value * 100).toFixed(1)}%` :
-         value.toFixed(2)}
+          format === "percentage" ? `${(value * 100).toFixed(1)}%` :
+            value.toFixed(2)}
       </p>
     </div>
   );
+
+  const [results, setResults] = useState(null);
 
   if (currentPage === 'landing') {
     return (
@@ -409,15 +447,24 @@ const App = () => {
                 BTC Parameters
               </h3>
               <InputField
-                label="Current BTC Price"
-                value={assumptions.BTC_0}
-                onChange={(val) => setAssumptions({...assumptions, BTC_0: val})}
-                suffix="USD"
+                label="BTC Treasury (Quantity)"
+                value={assumptions.BTC_treasury}
+                onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
+                suffix="BTC"
               />
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Current BTC Price
+                </label>
+                <div className={`w-full px-3 py-2 rounded-lg border opacity-75 ${darkMode ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-gray-200 border-gray-300 text-gray-500'} flex items-center justify-between`}>
+                  <span>{assumptions.BTC_current_market_price ? `$${assumptions.BTC_current_market_price.toFixed(2)}` : 'Loading...'}</span>
+                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>USD</span>
+                </div>
+              </div>
               <InputField
                 label="Target BTC Price"
                 value={assumptions.BTC_t}
-                onChange={(val) => setAssumptions({...assumptions, BTC_t: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, BTC_t: val })}
                 suffix="USD"
               />
             </div>
@@ -429,7 +476,7 @@ const App = () => {
               <SliderInput
                 label="Expected Drift (μ)"
                 value={assumptions.mu}
-                onChange={(val) => setAssumptions({...assumptions, mu: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, mu: val })}
                 min={0.35}
                 max={0.50}
                 step={0.01}
@@ -437,7 +484,7 @@ const App = () => {
               <SliderInput
                 label="Volatility (σ)"
                 value={assumptions.sigma}
-                onChange={(val) => setAssumptions({...assumptions, sigma: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, sigma: val })}
                 min={0.50}
                 max={0.80}
                 step={0.01}
@@ -445,7 +492,7 @@ const App = () => {
               <SliderInput
                 label="Time Horizon"
                 value={assumptions.t}
-                onChange={(val) => setAssumptions({...assumptions, t: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, t: val })}
                 min={0.25}
                 max={2.0}
                 step={0.25}
@@ -460,13 +507,13 @@ const App = () => {
               <InputField
                 label="Loan Principal"
                 value={assumptions.LoanPrincipal}
-                onChange={(val) => setAssumptions({...assumptions, LoanPrincipal: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
                 suffix="USD"
               />
               <SliderInput
                 label="Cost of Debt"
                 value={assumptions.C_Debt}
-                onChange={(val) => setAssumptions({...assumptions, C_Debt: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, C_Debt: val })}
                 min={0.04}
                 max={0.12}
                 step={0.01}
@@ -475,7 +522,7 @@ const App = () => {
               <SliderInput
                 label="LTV Cap"
                 value={assumptions.LTV_Cap}
-                onChange={(val) => setAssumptions({...assumptions, LTV_Cap: val})}
+                onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
                 min={0.10}
                 max={0.90}
                 step={0.05}
@@ -487,7 +534,7 @@ const App = () => {
           <div className="flex justify-center">
             <button
               onClick={handleCalculate}
-              disabled={isCalculating}
+              disabled={isCalculating || !assumptions.BTC_current_market_price}
               className="bg-blue-600 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
             >
               {isCalculating ? (
@@ -509,7 +556,7 @@ const App = () => {
           {isCalculating && (
             <div className="mt-6 max-w-md mx-auto">
               <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
-                <div 
+                <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${calculationProgress}%` }}
                 ></div>
@@ -609,7 +656,7 @@ const App = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
                     <XAxis dataKey="time" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                     <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
@@ -632,7 +679,7 @@ const App = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
                     <XAxis dataKey="ltv" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                     <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
@@ -670,28 +717,28 @@ const App = () => {
                 <tbody>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bull Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$75,000</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 1.5).toFixed(0) : '-'}</td>
                     <td className="py-2 px-3 text-right font-medium text-green-400">+45%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>32%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
                   </tr>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Base Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$55,000</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? assumptions.BTC_current_market_price.toFixed(0) : '-'}</td>
                     <td className="py-2 px-3 text-right font-medium text-green-400">+18%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>45%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>40%</td>
                   </tr>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bear Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$35,000</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 0.7).toFixed(0) : '-'}</td>
                     <td className="py-2 px-3 text-right font-medium text-red-400">-15%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>68%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
                   </tr>
                   <tr>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Stress Test</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>$20,000</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 0.4).toFixed(0) : '-'}</td>
                     <td className="py-2 px-3 text-right font-medium text-red-400">-45%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>95%</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>10%</td>
@@ -716,7 +763,7 @@ const App = () => {
                   ×
                 </button>
               </div>
-              
+
               <div className="space-y-6">
                 <div>
                   <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -724,9 +771,9 @@ const App = () => {
                   </h4>
                   <SliderInput
                     label="BTC Price Shock"
-                    value={assumptions.BTC_t / assumptions.BTC_0 - 1}
+                    value={assumptions.BTC_t / assumptions.BTC_current_market_price - 1}
                     onChange={(value) => {
-                      const newBTC_t = assumptions.BTC_0 * (1 + value);
+                      const newBTC_t = assumptions.BTC_current_market_price * (1 + value);
                       setAssumptions({ ...assumptions, BTC_t: newBTC_t });
                       handleWhatIf('BTC_t', newBTC_t);
                     }}
@@ -736,7 +783,7 @@ const App = () => {
                     suffix="%"
                   />
                 </div>
-                
+
                 <div>
                   <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     Optimization Controls
