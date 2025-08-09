@@ -42,22 +42,31 @@ const App = () => {
 
   const [assumptions, setAssumptions] = useState({
     BTC_treasury: 1000,
-    BTC_current_market_price: null, // Initialize as null until live price is fetched
-    BTC_t: 55000,
-    mu: 0.42,
-    sigma: 0.65,
+    BTC_purchased: 0,
+    BTC_current_market_price: null,
+    targetBTCPrice: 117000,
+    mu: 0.45,
+    sigma: 0.55,
     t: 1.0,
-    paths: 5000,
-    LoanPrincipal: 25000000,
-    C_Debt: 0.08,
-    LTV_Cap: 0.6,
-    TreasurySize: 50000000,
-    EquityRaise: 100000000,
-    K: 50000,
-    beta_ROE: 1.2,
+    delta: 0.08,
+    initial_equity_value: 1000000,
+    new_equity_raised: 50000,
+    IssuePrice: 117000,
+    LoanPrincipal: 50000000,
+    cost_of_debt: 0.06,
+    dilution_vol_estimate: 0.55,
+    LTV_Cap: 0.5,
+    beta_ROE: 2.5,
+    expected_return_btc: 0.45,
+    risk_free_rate: 0.04,
+    vol_mean_reversion_speed: 0.5,
+    long_run_volatility: 0.5,
+    paths: 10000,
+    jump_intensity: 0.1,
+    jump_mean: 0.0,
+    jump_volatility: 0.2,
   });
 
-  // Fetch live Bitcoin price on component mount
   useEffect(() => {
     const fetchLiveBTCPrice = async () => {
       try {
@@ -75,6 +84,7 @@ const App = () => {
           setAssumptions((prev) => ({
             ...prev,
             BTC_current_market_price: data.BTC_current_market_price,
+            targetBTCPrice: data.BTC_current_market_price,
           }));
         } else {
           throw new Error('No BTC price in response');
@@ -84,13 +94,14 @@ const App = () => {
         setError('Failed to fetch live BTC price. Using default value.');
         setAssumptions((prev) => ({
           ...prev,
-          BTC_current_market_price: 45000, // Fallback to default if fetch fails
+          BTC_current_market_price: 117000,
+          targetBTCPrice: 117000,
         }));
       }
     };
 
     fetchLiveBTCPrice();
-  }, []); // Empty dependency array to run once on mount
+  }, []);
 
   const handleCalculate = async () => {
     setIsCalculating(true);
@@ -103,19 +114,29 @@ const App = () => {
 
     const backendAssumptions = {
       BTC_treasury: assumptions.BTC_treasury,
+      BTC_purchased: assumptions.BTC_purchased,
       BTC_current_market_price: assumptions.BTC_current_market_price,
-      BTC_t: assumptions.BTC_t,
+      targetBTCPrice: assumptions.targetBTCPrice,
       mu: assumptions.mu,
       sigma: assumptions.sigma,
       t: assumptions.t,
-      paths: assumptions.paths,
+      delta: assumptions.delta,
+      initial_equity_value: assumptions.initial_equity_value,
+      new_equity_raised: assumptions.new_equity_raised,
+      IssuePrice: assumptions.IssuePrice,
       LoanPrincipal: assumptions.LoanPrincipal,
-      C_Debt: assumptions.C_Debt,
+      cost_of_debt: assumptions.cost_of_debt,
+      dilution_vol_estimate: assumptions.dilution_vol_estimate,
       LTV_Cap: assumptions.LTV_Cap,
-      S_0: assumptions.TreasurySize,
-      delta_S: assumptions.EquityRaise,
-      K: assumptions.K,
       beta_ROE: assumptions.beta_ROE,
+      expected_return_btc: assumptions.expected_return_btc,
+      risk_free_rate: assumptions.risk_free_rate,
+      vol_mean_reversion_speed: assumptions.vol_mean_reversion_speed,
+      long_run_volatility: assumptions.long_run_volatility,
+      paths: assumptions.paths,
+      jump_intensity: assumptions.jump_intensity,
+      jump_mean: assumptions.jump_mean,
+      jump_volatility: assumptions.jump_volatility,
     };
 
     try {
@@ -136,6 +157,28 @@ const App = () => {
       }
 
       const backendResults = await response.json();
+
+      // Fix: Create histogram for ltv_distribution
+      const ltv_paths = backendResults.ltv.ltv_paths;
+      const min_ltv = Math.min(...ltv_paths);
+      const max_ltv = Math.max(...ltv_paths);
+      const num_bins = 20;
+      const bin_width = (max_ltv - min_ltv) / num_bins;
+      const bins = Array(num_bins).fill(0);
+
+      ltv_paths.forEach(ltv => {
+        const bin_index = Math.min(
+          Math.floor((ltv - min_ltv) / bin_width),
+          num_bins - 1
+        );
+        bins[bin_index]++;
+      });
+
+      const ltv_distribution = bins.map((frequency, index) => ({
+        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2), // Center of bin
+        frequency,
+      }));
+
       const mappedResults = {
         nav: {
           avg_nav: backendResults.nav.avg_nav,
@@ -154,16 +197,20 @@ const App = () => {
         ltv: {
           avg_ltv: backendResults.ltv.avg_ltv,
           exceed_prob: backendResults.ltv.exceed_prob,
-          ltv_distribution: backendResults.ltv.ltv_paths.map((ltv, index) => ({
-            ltv: 0.3 + index * 0.01,
-            frequency: ltv,
-          })),
+          ltv_distribution, // Use histogram data
         },
         roe: {
           avg_roe: backendResults.roe.avg_roe,
         },
         preferred_bundle: {
           bundle_value: backendResults.preferred_bundle.bundle_value,
+        },
+        target_metrics: {
+          target_nav: backendResults.target_metrics.target_nav,
+          target_ltv: backendResults.target_metrics.target_ltv,
+          target_convertible_value: backendResults.target_metrics.target_convertible_value,
+          target_roe: backendResults.target_metrics.target_roe,
+          target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
       };
 
@@ -188,19 +235,29 @@ const App = () => {
 
     const backendAssumptions = {
       BTC_treasury: assumptions.BTC_treasury,
+      BTC_purchased: assumptions.BTC_purchased,
       BTC_current_market_price: assumptions.BTC_current_market_price,
-      BTC_t: assumptions.BTC_t,
+      targetBTCPrice: assumptions.targetBTCPrice,
       mu: assumptions.mu,
       sigma: assumptions.sigma,
       t: assumptions.t,
-      paths: assumptions.paths,
+      delta: assumptions.delta,
+      initial_equity_value: assumptions.initial_equity_value,
+      new_equity_raised: assumptions.new_equity_raised,
+      IssuePrice: assumptions.IssuePrice,
       LoanPrincipal: assumptions.LoanPrincipal,
-      C_Debt: assumptions.C_Debt,
+      cost_of_debt: assumptions.cost_of_debt,
+      dilution_vol_estimate: assumptions.dilution_vol_estimate,
       LTV_Cap: assumptions.LTV_Cap,
-      S_0: assumptions.TreasurySize,
-      delta_S: assumptions.EquityRaise,
-      K: assumptions.K,
       beta_ROE: assumptions.beta_ROE,
+      expected_return_btc: assumptions.expected_return_btc,
+      risk_free_rate: assumptions.risk_free_rate,
+      vol_mean_reversion_speed: assumptions.vol_mean_reversion_speed,
+      long_run_volatility: assumptions.long_run_volatility,
+      paths: assumptions.paths,
+      jump_intensity: assumptions.jump_intensity,
+      jump_mean: assumptions.jump_mean,
+      jump_volatility: assumptions.jump_volatility,
     };
 
     try {
@@ -223,6 +280,28 @@ const App = () => {
       }
 
       const backendResults = await response.json();
+
+      // Fix: Create histogram for ltv_distribution
+      const ltv_paths = backendResults.ltv.ltv_paths;
+      const min_ltv = Math.min(...ltv_paths);
+      const max_ltv = Math.max(...ltv_paths);
+      const num_bins = 20;
+      const bin_width = (max_ltv - min_ltv) / num_bins;
+      const bins = Array(num_bins).fill(0);
+
+      ltv_paths.forEach(ltv => {
+        const bin_index = Math.min(
+          Math.floor((ltv - min_ltv) / bin_width),
+          num_bins - 1
+        );
+        bins[bin_index]++;
+      });
+
+      const ltv_distribution = bins.map((frequency, index) => ({
+        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2), // Center of bin
+        frequency,
+      }));
+
       const mappedResults = {
         nav: {
           avg_nav: backendResults.nav.avg_nav,
@@ -241,16 +320,20 @@ const App = () => {
         ltv: {
           avg_ltv: backendResults.ltv.avg_ltv,
           exceed_prob: backendResults.ltv.exceed_prob,
-          ltv_distribution: backendResults.ltv.ltv_paths.map((ltv, index) => ({
-            ltv: 0.3 + index * 0.01,
-            frequency: ltv,
-          })),
+          ltv_distribution, // Use histogram data
         },
         roe: {
           avg_roe: backendResults.roe.avg_roe,
         },
         preferred_bundle: {
           bundle_value: backendResults.preferred_bundle.bundle_value,
+        },
+        target_metrics: {
+          target_nav: backendResults.target_metrics.target_nav,
+          target_ltv: backendResults.target_metrics.target_ltv,
+          target_convertible_value: backendResults.target_metrics.target_convertible_value,
+          target_roe: backendResults.target_metrics.target_roe,
+          target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
       };
 
@@ -267,19 +350,29 @@ const App = () => {
     try {
       const backendAssumptions = {
         BTC_treasury: assumptions.BTC_treasury,
+        BTC_purchased: assumptions.BTC_purchased,
         BTC_current_market_price: assumptions.BTC_current_market_price,
-        BTC_t: assumptions.BTC_t,
+        targetBTCPrice: assumptions.targetBTCPrice,
         mu: assumptions.mu,
         sigma: assumptions.sigma,
         t: assumptions.t,
-        paths: assumptions.paths,
+        delta: assumptions.delta,
+        initial_equity_value: assumptions.initial_equity_value,
+        new_equity_raised: assumptions.new_equity_raised,
+        IssuePrice: assumptions.IssuePrice,
         LoanPrincipal: assumptions.LoanPrincipal,
-        C_Debt: assumptions.C_Debt,
+        cost_of_debt: assumptions.cost_of_debt,
+        dilution_vol_estimate: assumptions.dilution_vol_estimate,
         LTV_Cap: assumptions.LTV_Cap,
-        S_0: assumptions.TreasurySize,
-        delta_S: assumptions.EquityRaise,
-        K: assumptions.K,
         beta_ROE: assumptions.beta_ROE,
+        expected_return_btc: assumptions.expected_return_btc,
+        risk_free_rate: assumptions.risk_free_rate,
+        vol_mean_reversion_speed: assumptions.vol_mean_reversion_speed,
+        long_run_volatility: assumptions.long_run_volatility,
+        paths: assumptions.paths,
+        jump_intensity: assumptions.jump_intensity,
+        jump_mean: assumptions.jump_mean,
+        jump_volatility: assumptions.jump_volatility,
       };
 
       const response = await fetch('http://127.0.0.1:8000/api/calculate/', {
@@ -339,7 +432,7 @@ const App = () => {
     </div>
   );
 
-  const InputField = ({ label, value, onChange, suffix = "" }) => {
+  const InputField = ({ label, value, onChange, suffix = "", tooltip = "" }) => {
     const [localValue, setLocalValue] = useState(value);
 
     useEffect(() => {
@@ -352,9 +445,12 @@ const App = () => {
     };
 
     return (
-      <div className="mb-4">
+      <div className="mb-4 relative">
         <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
           {label}
+          {tooltip && (
+            <span className="ml-2 text-xs text-gray-500" title={tooltip}>[?]</span>
+          )}
         </label>
         <div className="relative">
           <input
@@ -451,6 +547,7 @@ const App = () => {
                 value={assumptions.BTC_treasury}
                 onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
                 suffix="BTC"
+                tooltip="The amount of Bitcoin held in the treasury"
               />
               <div className="mb-4">
                 <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -463,9 +560,17 @@ const App = () => {
               </div>
               <InputField
                 label="Target BTC Price"
-                value={assumptions.BTC_t}
-                onChange={(val) => setAssumptions({ ...assumptions, BTC_t: val })}
+                value={assumptions.targetBTCPrice}
+                onChange={(val) => setAssumptions({ ...assumptions, targetBTCPrice: val })}
                 suffix="USD"
+                tooltip="Your expected Bitcoin price at the end of the time horizon"
+              />
+              <InputField
+                label="Issue Price"
+                value={assumptions.IssuePrice}
+                onChange={(val) => setAssumptions({ ...assumptions, IssuePrice: val })}
+                suffix="USD"
+                tooltip="Price at which convertible notes are issued"
               />
             </div>
 
@@ -498,26 +603,58 @@ const App = () => {
                 step={0.25}
                 suffix=" years"
               />
+              <SliderInput
+                label="Delta"
+                value={assumptions.delta}
+                onChange={(val) => setAssumptions({ ...assumptions, delta: val })}
+                min={0.05}
+                max={0.15}
+                step={0.01}
+                suffix="%"
+                tooltip="Dividend yield or carry cost"
+              />
+              <SliderInput
+                label="Expected BTC Return"
+                value={assumptions.expected_return_btc}
+                onChange={(val) => setAssumptions({ ...assumptions, expected_return_btc: val })}
+                min={0.3}
+                max={0.6}
+                step={0.01}
+                suffix="%"
+                tooltip="Expected annual return on BTC"
+              />
+              <SliderInput
+                label="Risk-Free Rate"
+                value={assumptions.risk_free_rate}
+                onChange={(val) => setAssumptions({ ...assumptions, risk_free_rate: val })}
+                min={0.02}
+                max={0.06}
+                step={0.01}
+                suffix="%"
+                tooltip="Risk-free interest rate"
+              />
             </div>
 
             <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
               <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Debt Parameters
+                Debt & Equity Parameters
               </h3>
               <InputField
                 label="Loan Principal"
                 value={assumptions.LoanPrincipal}
                 onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
                 suffix="USD"
+                tooltip="Principal amount of the loan"
               />
               <SliderInput
                 label="Cost of Debt"
-                value={assumptions.C_Debt}
-                onChange={(val) => setAssumptions({ ...assumptions, C_Debt: val })}
+                value={assumptions.cost_of_debt}
+                onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
                 min={0.04}
                 max={0.12}
                 step={0.01}
                 suffix="%"
+                tooltip="Interest rate on the loan"
               />
               <SliderInput
                 label="LTV Cap"
@@ -527,6 +664,102 @@ const App = () => {
                 max={0.90}
                 step={0.05}
                 suffix="%"
+                tooltip="Maximum loan-to-value ratio"
+              />
+              <InputField
+                label="Initial Equity Value"
+                value={assumptions.initial_equity_value}
+                onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
+                suffix="USD"
+                tooltip="Initial value of equity"
+              />
+              <InputField
+                label="New Equity Raised"
+                value={assumptions.new_equity_raised}
+                onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
+                suffix="USD"
+                tooltip="Amount of new equity raised"
+              />
+              <SliderInput
+                label="Beta ROE"
+                value={assumptions.beta_ROE}
+                onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
+                min={1.0}
+                max={3.0}
+                step={0.1}
+                tooltip="Beta for return on equity"
+              />
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Advanced Parameters
+              </h3>
+              <SliderInput
+                label="Dilution Volatility Estimate"
+                value={assumptions.dilution_vol_estimate}
+                onChange={(val) => setAssumptions({ ...assumptions, dilution_vol_estimate: val })}
+                min={0.4}
+                max={0.7}
+                step={0.01}
+                suffix="%"
+                tooltip="Volatility estimate for dilution calculation"
+              />
+              <SliderInput
+                label="Volatility Mean Reversion Speed"
+                value={assumptions.vol_mean_reversion_speed}
+                onChange={(val) => setAssumptions({ ...assumptions, vol_mean_reversion_speed: val })}
+                min={0.3}
+                max={0.7}
+                step={0.01}
+                tooltip="Speed of mean reversion for volatility"
+              />
+              <SliderInput
+                label="Long-Run Volatility"
+                value={assumptions.long_run_volatility}
+                onChange={(val) => setAssumptions({ ...assumptions, long_run_volatility: val })}
+                min={0.3}
+                max={0.7}
+                step={0.01}
+                suffix="%"
+                tooltip="Long-term average volatility"
+              />
+              <SliderInput
+                label="Paths"
+                value={assumptions.paths}
+                onChange={(val) => setAssumptions({ ...assumptions, paths: val })}
+                min={1000}
+                max={20000}
+                step={1000}
+                tooltip="Number of simulation paths"
+              />
+              <SliderInput
+                label="Jump Intensity"
+                value={assumptions.jump_intensity}
+                onChange={(val) => setAssumptions({ ...assumptions, jump_intensity: val })}
+                min={0.05}
+                max={0.2}
+                step={0.01}
+                tooltip="Intensity of jumps in BTC price"
+              />
+              <SliderInput
+                label="Jump Mean"
+                value={assumptions.jump_mean}
+                onChange={(val) => setAssumptions({ ...assumptions, jump_mean: val })}
+                min={-0.1}
+                max={0.1}
+                step={0.01}
+                tooltip="Mean of jumps in BTC price"
+              />
+              <SliderInput
+                label="Jump Volatility"
+                value={assumptions.jump_volatility}
+                onChange={(val) => setAssumptions({ ...assumptions, jump_volatility: val })}
+                min={0.1}
+                max={0.3}
+                step={0.01}
+                suffix="%"
+                tooltip="Volatility of jumps in BTC price"
               />
             </div>
           </div>
@@ -716,6 +949,17 @@ const App = () => {
                 </thead>
                 <tbody>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Target Case</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.targetBTCPrice.toFixed(0)}</td>
+                    <td className={`py-2 px-3 text-right font-medium ${results.target_metrics.target_nav > results.nav.avg_nav ? 'text-green-400' : 'text-red-400'}`}>
+                      {(((results.target_metrics.target_nav - results.nav.avg_nav) / results.nav.avg_nav) * 100).toFixed(1)}%
+                    </td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                      {(results.target_metrics.target_ltv * 100).toFixed(1)}%
+                    </td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
+                  </tr>
+                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bull Case</td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 1.5).toFixed(0) : '-'}</td>
                     <td className="py-2 px-3 text-right font-medium text-green-400">+45%</td>
@@ -771,11 +1015,11 @@ const App = () => {
                   </h4>
                   <SliderInput
                     label="BTC Price Shock"
-                    value={assumptions.BTC_t / assumptions.BTC_current_market_price - 1}
+                    value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
                     onChange={(value) => {
-                      const newBTC_t = assumptions.BTC_current_market_price * (1 + value);
-                      setAssumptions({ ...assumptions, BTC_t: newBTC_t });
-                      handleWhatIf('BTC_t', newBTC_t);
+                      const newtargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
+                      setAssumptions({ ...assumptions, targetBTCPrice: newtargetBTCPrice });
+                      handleWhatIf('targetBTCPrice', newtargetBTCPrice);
                     }}
                     min={-0.5}
                     max={0.5}
