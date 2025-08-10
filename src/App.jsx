@@ -158,7 +158,6 @@ const App = () => {
 
       const backendResults = await response.json();
 
-      // Fix: Create histogram for ltv_distribution
       const ltv_paths = backendResults.ltv.ltv_paths;
       const min_ltv = Math.min(...ltv_paths);
       const max_ltv = Math.max(...ltv_paths);
@@ -175,7 +174,7 @@ const App = () => {
       });
 
       const ltv_distribution = bins.map((frequency, index) => ({
-        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2), // Center of bin
+        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2),
         frequency,
       }));
 
@@ -197,7 +196,7 @@ const App = () => {
         ltv: {
           avg_ltv: backendResults.ltv.avg_ltv,
           exceed_prob: backendResults.ltv.exceed_prob,
-          ltv_distribution, // Use histogram data
+          ltv_distribution,
         },
         roe: {
           avg_roe: backendResults.roe.avg_roe,
@@ -212,6 +211,7 @@ const App = () => {
           target_roe: backendResults.target_metrics.target_roe,
           target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
+        scenario_metrics: backendResults.scenario_metrics,
       };
 
       setResults(mappedResults);
@@ -281,7 +281,6 @@ const App = () => {
 
       const backendResults = await response.json();
 
-      // Fix: Create histogram for ltv_distribution
       const ltv_paths = backendResults.ltv.ltv_paths;
       const min_ltv = Math.min(...ltv_paths);
       const max_ltv = Math.max(...ltv_paths);
@@ -298,7 +297,7 @@ const App = () => {
       });
 
       const ltv_distribution = bins.map((frequency, index) => ({
-        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2), // Center of bin
+        ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2),
         frequency,
       }));
 
@@ -320,7 +319,7 @@ const App = () => {
         ltv: {
           avg_ltv: backendResults.ltv.avg_ltv,
           exceed_prob: backendResults.ltv.exceed_prob,
-          ltv_distribution, // Use histogram data
+          ltv_distribution,
         },
         roe: {
           avg_roe: backendResults.roe.avg_roe,
@@ -335,6 +334,7 @@ const App = () => {
           target_roe: backendResults.target_metrics.target_roe,
           target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
+        scenario_metrics: backendResults.scenario_metrics,
       };
 
       setResults(mappedResults);
@@ -950,7 +950,9 @@ const App = () => {
                 <tbody>
                   <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
                     <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Target Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.targetBTCPrice.toFixed(0)}</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                      ${assumptions.targetBTCPrice.toFixed(0)}
+                    </td>
                     <td className={`py-2 px-3 text-right font-medium ${results.target_metrics.target_nav > results.nav.avg_nav ? 'text-green-400' : 'text-red-400'}`}>
                       {(((results.target_metrics.target_nav - results.nav.avg_nav) / results.nav.avg_nav) * 100).toFixed(1)}%
                     </td>
@@ -959,34 +961,25 @@ const App = () => {
                     </td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
                   </tr>
-                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bull Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 1.5).toFixed(0) : '-'}</td>
-                    <td className="py-2 px-3 text-right font-medium text-green-400">+45%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>32%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
-                  </tr>
-                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Base Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? assumptions.BTC_current_market_price.toFixed(0) : '-'}</td>
-                    <td className="py-2 px-3 text-right font-medium text-green-400">+18%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>45%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>40%</td>
-                  </tr>
-                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Bear Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 0.7).toFixed(0) : '-'}</td>
-                    <td className="py-2 px-3 text-right font-medium text-red-400">-15%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>68%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>25%</td>
-                  </tr>
-                  <tr>
-                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Stress Test</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>${assumptions.BTC_current_market_price ? (assumptions.BTC_current_market_price * 0.4).toFixed(0) : '-'}</td>
-                    <td className="py-2 px-3 text-right font-medium text-red-400">-45%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>95%</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>10%</td>
-                  </tr>
+                  {results.scenario_metrics && Object.entries(results.scenario_metrics).map(([scenarioName, metrics]) => (
+                    <tr key={scenarioName} className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                      <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {scenarioName}
+                      </td>
+                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                        ${metrics.btc_price.toFixed(0)}
+                      </td>
+                      <td className={`py-2 px-3 text-right font-medium ${metrics.nav_impact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {metrics.nav_impact.toFixed(1)}%
+                      </td>
+                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {(metrics.ltv_ratio * 100).toFixed(1)}%
+                      </td>
+                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {(metrics.probability * 100).toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1042,7 +1035,7 @@ const App = () => {
                   <button
                     onClick={() => handleWhatIf('beta_ROE', 'maximize')}
                     disabled={isWhatIfLoading}
-                    className={`w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Maximize ROE
                   </button>
@@ -1055,25 +1048,7 @@ const App = () => {
     );
   }
 
-  return (
-    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} px-4 sm:px-8`}>
-      <div className="text-center max-w-4xl mx-auto">
-        <h1 className={`text-3xl sm:text-5xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Block Three Capital
-        </h1>
-        <h2 className={`text-lg sm:text-2xl mb-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-          Precision Risk + Treasury Structuring for Bitcoin Institutions
-        </h2>
-        <button
-          onClick={() => setCurrentPage('assumptions')}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-blue-700 transition-colors flex items-center mx-auto"
-        >
-          <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-          Get Started
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default App;
