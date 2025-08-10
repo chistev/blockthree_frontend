@@ -39,6 +39,8 @@ const App = () => {
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
   const [isWhatIfLoading, setIsWhatIfLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedParam, setSelectedParam] = useState('');
+  const [paramValue, setParamValue] = useState('');
 
   const [assumptions, setAssumptions] = useState({
     BTC_treasury: 1000,
@@ -66,6 +68,8 @@ const App = () => {
     jump_mean: 0.0,
     jump_volatility: 0.2,
   });
+
+  const [results, setResults] = useState(null);
 
   useEffect(() => {
     const fetchLiveBTCPrice = async () => {
@@ -102,6 +106,26 @@ const App = () => {
 
     fetchLiveBTCPrice();
   }, []);
+
+  const validateWhatIfInput = (param, value) => {
+    if (['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'initial_equity_value', 'IssuePrice', 'LoanPrincipal'].includes(param) && value <= 0) {
+      setError(`${param} must be positive`);
+      return false;
+    }
+    if (param === 'long_run_volatility' && value === 0) {
+      setError('Long-run volatility cannot be zero');
+      return false;
+    }
+    if (param === 'BTC_purchased' && value < 0) {
+      setError('BTC_purchased cannot be negative');
+      return false;
+    }
+    if (param === 'paths' && value < 1) {
+      setError('Paths must be at least 1');
+      return false;
+    }
+    return true;
+  };
 
   const handleCalculate = async () => {
     setIsCalculating(true);
@@ -212,6 +236,7 @@ const App = () => {
           target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
         scenario_metrics: backendResults.scenario_metrics,
+        optimized_param: backendResults.optimized_param || null,
       };
 
       setResults(mappedResults);
@@ -230,6 +255,7 @@ const App = () => {
   };
 
   const handleWhatIf = async (param, value) => {
+    if (!validateWhatIfInput(param, value)) return;
     setIsWhatIfLoading(true);
     setError(null);
 
@@ -335,6 +361,7 @@ const App = () => {
           target_bundle_value: backendResults.target_metrics.target_bundle_value,
         },
         scenario_metrics: backendResults.scenario_metrics,
+        optimized_param: backendResults.optimized_param || null,
       };
 
       setResults(mappedResults);
@@ -346,7 +373,7 @@ const App = () => {
     }
   };
 
-  const handleExport = async (format) => {
+  const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
     try {
       const backendAssumptions = {
         BTC_treasury: assumptions.BTC_treasury,
@@ -375,16 +402,22 @@ const App = () => {
         jump_volatility: assumptions.jump_volatility,
       };
 
-      const response = await fetch('http://127.0.0.1:8000/api/calculate/', {
+      const body = {
+        assumptions: backendAssumptions,
+        format,
+        use_live: true,
+      };
+      if (param && value) {
+        body.param = param;
+        body.value = value;
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          assumptions: backendAssumptions,
-          format,
-          use_live: true,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -406,11 +439,14 @@ const App = () => {
     }
   };
 
-  const SliderInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "" }) => (
+  const SliderInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "" }) => (
     <div className="mb-6">
       <div className="flex justify-between items-center mb-2">
         <label className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
           {label}
+          {tooltip && (
+            <span className="ml-2 text-xs text-gray-500" title={tooltip}>[?]</span>
+          )}
         </label>
         <span className={`text-sm font-mono ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
           {value.toFixed(step >= 1 ? 0 : 2)}{suffix}
@@ -488,8 +524,6 @@ const App = () => {
       </p>
     </div>
   );
-
-  const [results, setResults] = useState(null);
 
   if (currentPage === 'landing') {
     return (
@@ -1004,15 +1038,44 @@ const App = () => {
               <div className="space-y-6">
                 <div>
                   <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Custom Parameter
+                  </h4>
+                  <select
+                    value={selectedParam}
+                    onChange={(e) => setSelectedParam(e.target.value)}
+                    className={`w-full mb-3 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  >
+                    <option value="">Select Parameter</option>
+                    {Object.keys(assumptions).map((key) => (
+                      <option key={key} value={key}>{key}</option>
+                    ))}
+                  </select>
+                  <InputField
+                    label="Parameter Value"
+                    value={paramValue}
+                    onChange={(val) => setParamValue(val)}
+                    tooltip="Enter a value for the selected parameter"
+                  />
+                  <button
+                    onClick={() => handleWhatIf(selectedParam, paramValue)}
+                    disabled={isWhatIfLoading || !selectedParam || !paramValue}
+                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading || !selectedParam || !paramValue ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    Run What-If
+                  </button>
+                </div>
+
+                <div>
+                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                     What-If Scenarios
                   </h4>
                   <SliderInput
                     label="BTC Price Shock"
                     value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
                     onChange={(value) => {
-                      const newtargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
-                      setAssumptions({ ...assumptions, targetBTCPrice: newtargetBTCPrice });
-                      handleWhatIf('targetBTCPrice', newtargetBTCPrice);
+                      const newTargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
+                      setAssumptions({ ...assumptions, targetBTCPrice: newTargetBTCPrice });
+                      handleWhatIf('targetBTCPrice', newTargetBTCPrice);
                     }}
                     min={-0.5}
                     max={0.5}
@@ -1035,11 +1098,56 @@ const App = () => {
                   <button
                     onClick={() => handleWhatIf('beta_ROE', 'maximize')}
                     disabled={isWhatIfLoading}
-                    className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Maximize ROE
                   </button>
                 </div>
+
+                <div>
+    <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+        Export What-If Results
+    </h4>
+    <button
+        onClick={() => {
+            if (!selectedParam || !paramValue) {
+                setError('Please select a parameter and enter a valid value.');
+                return;
+            }
+            if (!validateWhatIfInput(selectedParam, paramValue)) return;
+            handleExport('csv', '/api/what_if/', selectedParam, paramValue);
+        }}
+        disabled={isWhatIfLoading}
+        className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+        Export CSV
+    </button>
+    <button
+        onClick={() => {
+            if (!selectedParam || !paramValue) {
+                setError('Please select a parameter and enter a valid value.');
+                return;
+            }
+            if (!validateWhatIfInput(selectedParam, paramValue)) return;
+            handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
+        }}
+        disabled={isWhatIfLoading}
+        className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+        Export PDF
+    </button>
+</div>
+
+                {results?.optimized_param && (
+                  <div>
+                    <h4 className={`font-medium mb-2 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Optimized Parameter
+                    </h4>
+                    <p className={`text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {Object.keys(results.optimized_param)[0]}: {Object.values(results.optimized_param)[0].toFixed(2)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
