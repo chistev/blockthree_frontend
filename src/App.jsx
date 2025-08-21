@@ -379,13 +379,25 @@ const App = () => {
     <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-          <div className="mb-4 sm:mb-0">
-            <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Model Assumptions
-            </h1>
-            <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
-              Configure parameters for risk analysis and treasury optimization
-            </p>
+          <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+            <button
+              onClick={() => setCurrentPage('landing')}
+              className={`p-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Back to Home"
+            >
+              <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+              Home
+            </button>
+            <div>
+              <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Model Assumptions
+              </h1>
+              <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
+                Configure parameters for risk analysis and treasury optimization
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setDarkMode(!darkMode)}
@@ -591,9 +603,31 @@ const App = () => {
     <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
       <nav className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-b px-4 sm:px-8 py-3`}>
         <div className="flex flex-col sm:flex-row justify-between items-center">
-          <h1 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-3 sm:mb-0`}>
-            Block Three Capital - Risk Dashboard
-          </h1>
+          <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+            <button
+              onClick={() => setCurrentPage('landing')}
+              className={`p-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Back to Home"
+            >
+              <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+              Home
+            </button>
+            <button
+              onClick={() => setCurrentPage('assumptions')}
+              className={`p-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Back to Assumptions"
+            >
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+              Assumptions
+            </button>
+            <h1 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Block Three Capital - Risk Dashboard
+            </h1>
+          </div>
           <div className="flex flex-wrap items-center space-x-2 sm:space-x-4">
             <button
               onClick={() => setBespokePanelOpen(!bespokePanelOpen)}
