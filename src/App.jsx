@@ -60,32 +60,80 @@ const DEFAULT_ASSUMPTIONS = {
 };
 
 // Reusable Components
-const SliderInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "", darkMode }) => (
-  <div className="mb-6">
-    <div className="flex justify-between items-center mb-2">
-      <label className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-        {label}
-        {tooltip && <span className="ml-2 text-xs text-gray-500" title={tooltip}>[?]</span>}
-      </label>
-      <span className={`text-sm font-mono ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-        {value.toFixed(step >= 1 ? 0 : 2)}{suffix}
-      </span>
+const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "", darkMode }) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => setLocalValue(value), [value]);
+
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setLocalValue(val);
+  };
+
+  const handleInputBlur = () => {
+    let parsed = parseFloat(localValue);
+    if (suffix === "%") {
+      parsed = parsed / 100; // Convert percentage to decimal
+    }
+    const clamped = isNaN(parsed) ? min : Math.max(min, Math.min(max, parsed));
+    setLocalValue(clamped);
+    onChange(clamped);
+  };
+
+  const handleSliderChange = (val) => {
+    setLocalValue(val);
+    onChange(val);
+  };
+
+  // Ensure displayValue is a number before calling toFixed
+  const displayValue = parseFloat(localValue);
+  const formattedValue = isNaN(displayValue)
+    ? (suffix === "%" ? min * 100 : min).toFixed(suffix === "%" ? 1 : step >= 1 ? 0 : 2)
+    : (suffix === "%" ? displayValue * 100 : displayValue).toFixed(suffix === "%" ? 1 : step >= 1 ? 0 : 2);
+
+  return (
+    <div className="mb-6">
+      <div className="flex justify-between items-center mb-2">
+        <label className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+          {label}
+          {tooltip && <span className="ml-2 text-xs text-gray-500" title={tooltip}>[?]</span>}
+        </label>
+        <span className={`text-sm font-mono ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          {formattedValue}{suffix}
+        </span>
+      </div>
+      <div className="relative mb-2">
+        <input
+          type="text"
+          value={suffix === "%" && !isNaN(parseFloat(localValue)) ? (parseFloat(localValue) * 100) : localValue}
+          onChange={handleInputChange}
+          onBlur={handleInputBlur}
+          className={`w-full px-3 py-2 rounded-lg border ${
+            darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+          } focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors text-sm`}
+        />
+        {suffix && (
+          <span className={`absolute right-2 top-2 text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+            {suffix}
+          </span>
+        )}
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={isNaN(parseFloat(localValue)) ? min : (suffix === "%" ? parseFloat(localValue) / 100 : parseFloat(localValue))}
+        onChange={(e) => handleSliderChange(parseFloat(e.target.value))}
+        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+      />
+      <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <span>{suffix === "%" ? (min * 100).toFixed(1) : min}</span>
+        <span>{suffix === "%" ? (max * 100).toFixed(1) : max}</span>
+      </div>
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-    />
-    <div className="flex justify-between text-xs text-gray-500 mt-1">
-      <span>{min}</span>
-      <span>{max}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 const InputField = ({ label, value, onChange, suffix = "", tooltip = "", darkMode }) => {
   const [localValue, setLocalValue] = useState(value);
@@ -407,7 +455,7 @@ const App = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               BTC Parameters
@@ -455,11 +503,11 @@ const App = () => {
               { label: "Expected Drift (μ)", key: "mu", min: 0.35, max: 0.50, step: 0.01 },
               { label: "Volatility (σ)", key: "sigma", min: 0.50, max: 0.80, step: 0.01 },
               { label: "Time Horizon", key: "t", min: 0.25, max: 2.0, step: 0.25, suffix: " years" },
-              { label: "Delta", key: "delta", min: 0.05, max: 0.15, step: 0.01, suffix: "%", tooltip: "Dividend yield or carry cost" },
-              { label: "Expected BTC Return", key: "expected_return_btc", min: 0.3, max: 0.6, step: 0.01, suffix: "%", tooltip: "Expected annual return on BTC" },
-              { label: "Risk-Free Rate", key: "risk_free_rate", min: 0.02, max: 0.06, step: 0.01, suffix: "%", tooltip: "Risk-free interest rate" },
+              { label: "Delta", key: "delta", min: 0.05, max: 0.15, step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
+              { label: "Expected BTC Return", key: "expected_return_btc", min: 0.1, max: 0.6, step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
+              { label: "Risk-Free Rate", key: "risk_free_rate", min: 0.01, max: 0.06, step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
             ].map(({ label, key, min, max, step, suffix, tooltip }) => (
-              <SliderInput
+              <HybridInput
                 key={key}
                 label={label}
                 value={assumptions[key]}
@@ -486,24 +534,24 @@ const App = () => {
               tooltip="Principal amount of the loan"
               darkMode={darkMode}
             />
-            <SliderInput
+            <HybridInput
               label="Cost of Debt"
               value={assumptions.cost_of_debt}
               onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
               min={0.04}
               max={0.12}
-              step={0.01}
+              step={0.001}
               suffix="%"
               tooltip="Interest rate on the loan"
               darkMode={darkMode}
             />
-            <SliderInput
+            <HybridInput
               label="LTV Cap"
               value={assumptions.LTV_Cap}
               onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
               min={0.10}
               max={0.90}
-              step={0.05}
+              step={0.001}
               suffix="%"
               tooltip="Maximum loan-to-value ratio"
               darkMode={darkMode}
@@ -524,7 +572,7 @@ const App = () => {
               tooltip="Amount of new equity raised"
               darkMode={darkMode}
             />
-            <SliderInput
+            <HybridInput
               label="Beta ROE"
               value={assumptions.beta_ROE}
               onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
@@ -541,15 +589,15 @@ const App = () => {
               Advanced Parameters
             </h3>
             {[
-              { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0.4, max: 0.7, step: 0.01, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
+              { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0.4, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
               { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", min: 0.3, max: 0.7, step: 0.01, tooltip: "Speed of mean reversion for volatility" },
-              { label: "Long-Run Volatility", key: "long_run_volatility", min: 0.3, max: 0.7, step: 0.01, suffix: "%", tooltip: "Long-term average volatility" },
+              { label: "Long-Run Volatility", key: "long_run_volatility", min: 0.3, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
               { label: "Paths", key: "paths", min: 1000, max: 20000, step: 1000, tooltip: "Number of simulation paths" },
               { label: "Jump Intensity", key: "jump_intensity", min: 0.05, max: 0.2, step: 0.01, tooltip: "Intensity of jumps in BTC price" },
               { label: "Jump Mean", key: "jump_mean", min: -0.1, max: 0.1, step: 0.01, tooltip: "Mean of jumps in BTC price" },
-              { label: "Jump Volatility", key: "jump_volatility", min: 0.1, max: 0.3, step: 0.01, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
+              { label: "Jump Volatility", key: "jump_volatility", min: 0.1, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
             ].map(({ label, key, min, max, step, suffix, tooltip }) => (
-              <SliderInput
+              <HybridInput
                 key={key}
                 label={label}
                 value={assumptions[key]}
@@ -832,7 +880,7 @@ const App = () => {
                 <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
                   What-If Scenarios
                 </h4>
-                <SliderInput
+                <HybridInput
                   label="BTC Price Shock"
                   value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
                   onChange={(value) => {
