@@ -62,34 +62,40 @@ const DEFAULT_ASSUMPTIONS = {
 
 // Reusable Components
 const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "", darkMode }) => {
-  const [localValue, setLocalValue] = useState(value);
+  const [localValue, setLocalValue] = useState(value.toString());
 
-  useEffect(() => setLocalValue(value), [value]);
+  useEffect(() => setLocalValue(value.toString()), [value]);
 
   const handleInputChange = (e) => {
     const val = e.target.value;
-    setLocalValue(val);
+    // Allow empty input or valid number/decimal input
+    if (val === '' || /^-?\d*\.?\d*$/.test(val)) {
+      setLocalValue(val);
+    }
   };
 
   const handleInputBlur = () => {
     let parsed = parseFloat(localValue);
-    if (suffix === "%") {
+    if (isNaN(parsed)) {
+      parsed = min; // Default to min if input is invalid
+    } else if (suffix === "%") {
       parsed = parsed / 100; // Convert percentage to decimal
     }
-    const clamped = isNaN(parsed) ? min : Math.max(min, Math.min(max, parsed));
-    setLocalValue(clamped);
+    // Allow 0 for percentage-based inputs if min is 0
+    const clamped = Math.max(min, Math.min(max, parsed));
+    setLocalValue(clamped.toString());
     onChange(clamped);
   };
 
   const handleSliderChange = (val) => {
-    setLocalValue(val);
+    setLocalValue(val.toString());
     onChange(val);
   };
 
   const displayValue = parseFloat(localValue);
   const formattedValue = isNaN(displayValue)
-    ? (suffix === "%" ? min * 100 : min).toFixed(suffix === "%" ? 1 : step >= 1 ? 0 : 2)
-    : (suffix === "%" ? displayValue * 100 : displayValue).toFixed(suffix === "%" ? 1 : step >= 1 ? 0 : 2);
+    ? (suffix === "%" ? (min * 100).toFixed(1) : min.toFixed(step >= 1 ? 0 : 2))
+    : (suffix === "%" ? (displayValue * 100).toFixed(1) : displayValue.toFixed(step >= 1 ? 0 : 2));
 
   return (
     <div className="mb-6">
@@ -105,7 +111,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
       <div className="relative mb-2">
         <input
           type="text"
-          value={suffix === "%" && !isNaN(parseFloat(localValue)) ? (parseFloat(localValue) * 100) : localValue}
+          value={localValue}
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           className={`w-full px-3 py-2 rounded-lg border ${
@@ -123,7 +129,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
         min={min}
         max={max}
         step={step}
-        value={isNaN(parseFloat(localValue)) ? min : (suffix === "%" ? parseFloat(localValue) / 100 : parseFloat(localValue))}
+        value={isNaN(parseFloat(localValue)) ? min : parseFloat(localValue)}
         onChange={(e) => handleSliderChange(parseFloat(e.target.value))}
         className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
       />
@@ -136,9 +142,9 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
 };
 
 const InputField = ({ label, value, onChange, suffix = "", tooltip = "", darkMode }) => {
-  const [localValue, setLocalValue] = useState(value);
+  const [localValue, setLocalValue] = useState(value.toString());
 
-  useEffect(() => setLocalValue(value), [value]);
+  useEffect(() => setLocalValue(value.toString()), [value]);
 
   const handleBlur = () => {
     const parsed = parseFloat(localValue);
@@ -585,7 +591,7 @@ const App = () => {
               label="Cost of Debt"
               value={assumptions.cost_of_debt}
               onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
-              min={0.04}
+              min={0} // Allow 0% for Cost of Debt
               max={0.12}
               step={0.001}
               suffix="%"
@@ -596,7 +602,7 @@ const App = () => {
               label="LTV Cap"
               value={assumptions.LTV_Cap}
               onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
-              min={0.10}
+              min={0} // Allow 0% for LTV Cap
               max={0.90}
               step={0.001}
               suffix="%"
@@ -636,13 +642,13 @@ const App = () => {
               Advanced Parameters
             </h3>
             {[
-              { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0.4, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
+              { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
               { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", min: 0.3, max: 0.7, step: 0.01, tooltip: "Speed of mean reversion for volatility" },
-              { label: "Long-Run Volatility", key: "long_run_volatility", min: 0.3, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
+              { label: "Long-Run Volatility", key: "long_run_volatility", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
               { label: "Paths", key: "paths", min: 1000, max: 20000, step: 1000, tooltip: "Number of simulation paths" },
               { label: "Jump Intensity", key: "jump_intensity", min: 0.05, max: 0.2, step: 0.01, tooltip: "Intensity of jumps in BTC price" },
               { label: "Jump Mean", key: "jump_mean", min: -0.1, max: 0.1, step: 0.01, tooltip: "Mean of jumps in BTC price" },
-              { label: "Jump Volatility", key: "jump_volatility", min: 0.1, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
+              { label: "Jump Volatility", key: "jump_volatility", min: 0, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
             ].map(({ label, key, min, max, step, suffix, tooltip }) => (
               <HybridInput
                 key={key}
