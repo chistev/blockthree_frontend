@@ -17,7 +17,8 @@ import {
   Home,
   Gauge,
   Download,
-  FileText
+  FileText,
+  Info
 } from 'lucide-react';
 import {
   LineChart,
@@ -85,7 +86,6 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
     onChange(val);
   };
 
-  // Ensure displayValue is a number before calling toFixed
   const displayValue = parseFloat(localValue);
   const formattedValue = isNaN(displayValue)
     ? (suffix === "%" ? min * 100 : min).toFixed(suffix === "%" ? 1 : step >= 1 ? 0 : 2)
@@ -171,10 +171,15 @@ const InputField = ({ label, value, onChange, suffix = "", tooltip = "", darkMod
   );
 };
 
-const MetricCard = ({ title, value, icon: Icon, format = "number", darkMode }) => (
-  <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg`}>
+const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
+  <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg relative group`}>
     <div className="flex items-center justify-between mb-3">
       <Icon className={`w-4 h-4 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      {tooltip && (
+        <span className="ml-2 text-xs text-gray-500 cursor-help" title={tooltip}>
+          <Info className="w-4 h-4" />
+        </span>
+      )}
     </div>
     <h3 className={`text-xs font-medium mb-1 ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
       {title}
@@ -184,8 +189,48 @@ const MetricCard = ({ title, value, icon: Icon, format = "number", darkMode }) =
        format === "percentage" ? `${(value * 100).toFixed(1)}%` :
        value.toFixed(2)}
     </p>
+    {description && (
+      <p className={`text-xs mt-2 ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+        {description}
+      </p>
+    )}
   </div>
 );
+
+const DocumentationModal = ({ isOpen, onClose, darkMode }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className={`p-6 rounded-xl max-w-lg w-full ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900'} border ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+        <h2 className="text-xl font-semibold mb-4">Calculation Methodology</h2>
+        <p className="text-sm mb-4">
+          <strong>Total BTC Portfolio Value</strong>: Calculated as BTC Treasury Quantity × Current BTC Price. This represents the raw value of your Bitcoin holdings.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>Structured Product Bundle Value</strong>: A weighted composite metric calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - Tax Rate), where Tax Rate is 20%. NAV accounts for collateral value, debt costs, and equity dilution. Convertible Note Value uses the Black-Scholes model adjusted for BTC price paths.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>NAV Erosion Risk</strong>: Probability that the Net Asset Value falls below 90% of its average, based on simulated BTC price paths.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>LTV Exceedance</strong>: Probability that the Loan-to-Value ratio exceeds the LTV Cap, based on simulated BTC price paths.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>Expected ROE</strong>: Return on Equity, calculated using the CAPM model adjusted for BTC volatility and beta.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>Dilution Risk</strong>: The base dilution from new equity raised, adjusted by simulated NAV paths and volatility.
+        </p>
+        <button
+          onClick={onClose}
+          className={`w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm`}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
@@ -231,7 +276,7 @@ const processLTVPaths = (ltv_paths) => {
   }));
 };
 
-const mapResults = (backendResults) => ({
+const mapResults = (backendResults, btc_treasury, btc_current_market_price) => ({
   nav: {
     avg_nav: backendResults.nav.avg_nav,
     ci_lower: backendResults.nav.ci_lower,
@@ -257,6 +302,7 @@ const mapResults = (backendResults) => ({
   preferred_bundle: {
     bundle_value: backendResults.preferred_bundle.bundle_value,
   },
+  btc_portfolio_value: btc_treasury * btc_current_market_price,
   target_metrics: {
     target_nav: backendResults.target_metrics.target_nav,
     target_ltv: backendResults.target_metrics.target_ltv,
@@ -300,6 +346,7 @@ const App = () => {
   const [paramValue, setParamValue] = useState('');
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
   const [results, setResults] = useState(null);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
 
   useEffect(() => {
     fetchBTCPrice(setAssumptions, setError);
@@ -340,7 +387,7 @@ const App = () => {
         setIsCalculating,
         'Failed to run models. Please try again.'
       );
-      setResults(mapResults(backendResults));
+      setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
       setCalculationProgress(100);
       setCurrentPage('dashboard');
     } finally {
@@ -364,7 +411,7 @@ const App = () => {
         setIsWhatIfLoading,
         'What-If analysis failed. Please try again.'
       );
-      setResults(mapResults(backendResults));
+      setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
     } catch (err) {
       // Error handled in handleAPIRequest
     }
@@ -613,7 +660,7 @@ const App = () => {
           </div>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center space-x-4">
           <button
             onClick={handleCalculate}
             disabled={isCalculating || !assumptions.BTC_current_market_price}
@@ -631,6 +678,13 @@ const App = () => {
               </>
             )}
           </button>
+          <button
+            onClick={() => setIsDocModalOpen(true)}
+            className={`px-4 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            <Info className="w-4 h-4 mr-1" />
+            Learn More
+          </button>
         </div>
         {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
         {isCalculating && (
@@ -644,6 +698,7 @@ const App = () => {
           </div>
         )}
       </div>
+      <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
     </div>
   );
 
@@ -699,6 +754,13 @@ const App = () => {
               Export PDF
             </button>
             <button
+              onClick={() => setIsDocModalOpen(true)}
+              className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+            >
+              <Info className="w-4 h-4 mr-1" />
+              Learn More
+            </button>
+            <button
               onClick={() => setDarkMode(!darkMode)}
               className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
             >
@@ -712,13 +774,65 @@ const App = () => {
         {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
           {[
-            { title: "Portfolio Value", value: results.preferred_bundle.bundle_value, icon: Briefcase, format: "currency" },
-            { title: "NAV Erosion Risk", value: results.nav.erosion_prob, icon: Shield, format: "percentage" },
-            { title: "LTV Exceedance", value: results.ltv.exceed_prob, icon: AlertTriangle, format: "percentage" },
-            { title: "Expected ROE", value: results.roe.avg_roe, icon: Target, format: "percentage" },
-            { title: "Dilution Risk", value: results.dilution.base_dilution, icon: TrendingDown, format: "percentage" },
-          ].map(({ title, value, icon, format }) => (
-            <MetricCard key={title} title={title} value={value} icon={icon} format={format} darkMode={darkMode} />
+            {
+              title: "Total BTC Portfolio Value",
+              value: results.btc_portfolio_value,
+              description: "Raw value of BTC holdings (Treasury × Current Price)",
+              tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
+              icon: DollarSign,
+              format: "currency"
+            },
+            {
+              title: "Structured Product Bundle Value",
+              value: results.preferred_bundle.bundle_value,
+              description: "Weighted value of NAV, dilution, and convertible note",
+              tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
+              icon: Briefcase,
+              format: "currency"
+            },
+            {
+              title: "NAV Erosion Risk",
+              value: results.nav.erosion_prob,
+              description: "Probability NAV falls below 90% of average",
+              tooltip: "The likelihood that Net Asset Value drops below 90% of its average, based on simulated BTC price paths.",
+              icon: Shield,
+              format: "percentage"
+            },
+            {
+              title: "LTV Exceedance",
+              value: results.ltv.exceed_prob,
+              description: "Probability LTV exceeds the cap",
+              tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
+              icon: AlertTriangle,
+              format: "percentage"
+            },
+            {
+              title: "Expected ROE",
+              value: results.roe.avg_roe,
+              description: "Expected Return on Equity",
+              tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
+              icon: Target,
+              format: "percentage"
+            },
+            {
+              title: "Dilution Risk",
+              value: results.dilution.base_dilution,
+              description: "Base dilution from new equity raised",
+              tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate.",
+              icon: TrendingDown,
+              format: "percentage"
+            },
+          ].map(({ title, value, description, tooltip, icon, format }) => (
+            <MetricCard
+              key={title}
+              title={title}
+              value={value}
+              description={description}
+              tooltip={tooltip}
+              icon={icon}
+              format={format}
+              darkMode={darkMode}
+            />
           ))}
         </div>
 
@@ -964,6 +1078,7 @@ const App = () => {
           </div>
         </div>
       )}
+      <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
     </div>
   );
 
