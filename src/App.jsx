@@ -27,7 +27,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  Legend
 } from 'recharts';
 
 // Constants for default assumptions
@@ -255,6 +256,40 @@ const validateWhatIfInput = (param, value, setError) => {
     return false;
   }
   return true;
+};
+
+const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
+  const scenarios = results.scenario_metrics;
+  const timeSteps = 100; // Number of time steps for smooth paths
+  const paths = {};
+
+  Object.entries(scenarios).forEach(([scenarioName, metrics]) => {
+    const path = [];
+    const initialBTCPrice = assumptions.BTC_current_market_price;
+    const finalBTCPrice = metrics.btc_price;
+    const totalBTC = assumptions.BTC_treasury + assumptions.BTC_purchased;
+
+    for (let i = 0; i <= timeSteps; i++) {
+      const t = i / timeSteps;
+      // Linear interpolation for BTC price
+      const interpolatedPrice = initialBTCPrice + t * (finalBTCPrice - initialBTCPrice);
+
+      if (metricType === 'nav') {
+        // Simplified NAV calculation: CollateralValue * (1 + delta) - LoanPrincipal * cost_of_debt
+        const collateralValue = totalBTC * interpolatedPrice;
+        const nav = (collateralValue + collateralValue * assumptions.delta - assumptions.LoanPrincipal * assumptions.cost_of_debt) /
+                    (assumptions.initial_equity_value + assumptions.new_equity_raised);
+        path.push({ time: t, value: nav });
+      } else if (metricType === 'ltv') {
+        // LTV = LoanPrincipal / (totalBTC * price)
+        const ltv = assumptions.LoanPrincipal / (totalBTC * interpolatedPrice);
+        path.push({ time: t, value: ltv });
+      }
+    }
+    paths[scenarioName] = path;
+  });
+
+  return paths;
 };
 
 const App = () => {
@@ -639,181 +674,282 @@ const App = () => {
     </div>
   );
 
-  const DashboardPage = () => (
-  <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
-    <nav className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-b px-4 sm:px-8 py-3`}>
-      <div className="flex flex-col sm:flex-row justify-between items-center">
-        <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-          <button
-            onClick={() => setCurrentPage('landing')}
-            className={`p-2 rounded-lg flex items-center text-sm ${
-              darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            title="Back to Home"
-          >
-            <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-            Home
-          </button>
-          <button
-            onClick={() => setCurrentPage('assumptions')}
-            className={`p-2 rounded-lg flex items-center text-sm ${
-              darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            title="Back to Assumptions"
-          >
-            <Sliders className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-            Assumptions
-          </button>
-          <h1 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Block Three Capital - Risk Dashboard
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center space-x-2 sm:space-x-4">
-          <button
-            onClick={() => setBespokePanelOpen(!bespokePanelOpen)}
-            className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
-          >
-            <Sliders className="w-4 h-4 mr-1" />
-            Bespoke Mode
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            disabled={isExportLoading}
-            className={`px-3 py-2 rounded-lg flex items-center text-sm ${
-              darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
-            } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
-          >
-            {isExportLoading && exportType === 'CSV' ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 mr-1" />
-                Export CSV
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            disabled={isExportLoading}
-            className={`px-3 py-2 rounded-lg flex items-center text-sm ${
-              darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
-            } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
-          >
-            {isExportLoading && exportType === 'PDF' ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <FileText className="w-4 h-4 mr-1" />
-                Export PDF
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => setIsDocModalOpen(true)}
-            className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
-          >
-            <Info className="w-4 h-4 mr-1" />
-            Learn More
-          </button>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
-          >
-            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-        </div>
-      </div>
-    </nav>
+  const DashboardPage = () => {
+  const [selectedMetric, setSelectedMetric] = useState('nav'); // 'nav' or 'ltv'
+  const [visibleScenarios, setVisibleScenarios] = useState({
+    'Bull Case': true,
+    'Base Case': true,
+    'Bear Case': true,
+    'Stress Test': true,
+  });
 
-    <div className="p-4 sm:p-8">
-      {/* Loading Indicator for Exports */}
-      {isExportLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className={`p-6 rounded-lg ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900'} shadow-lg flex items-center space-x-3`}>
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
-            <p className="text-sm">Preparing {exportType} for download...</p>
+  const scenarioPaths = generateScenarioPaths(results, assumptions, selectedMetric);
+
+  const colors = {
+    'Bull Case': '#10b981',
+    'Base Case': '#3b82f6',
+    'Bear Case': '#ef4444',
+    'Stress Test': '#f59e0b',
+  };
+
+  return (
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+      <nav className={`${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-b px-4 sm:px-8 py-3`}>
+        <div className="flex flex-col sm:flex-row justify-between items-center">
+          <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+            <button
+              onClick={() => setCurrentPage('landing')}
+              className={`p-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Back to Home"
+            >
+              <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+              Home
+            </button>
+            <button
+              onClick={() => setCurrentPage('assumptions')}
+              className={`p-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Back to Assumptions"
+            >
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+              Assumptions
+            </button>
+            <h1 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Block Three Capital - Risk Dashboard
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center space-x-2 sm:space-x-4">
+            <button
+              onClick={() => setBespokePanelOpen(!bespokePanelOpen)}
+              className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+            >
+              <Sliders className="w-4 h-4 mr-1" />
+              Bespoke Mode
+            </button>
+            <button
+              onClick={() => handleExport('csv')}
+              disabled={isExportLoading}
+              className={`px-3 py-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
+              } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+            >
+              {isExportLoading && exportType === 'CSV' ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-1" />
+                  Export CSV
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              disabled={isExportLoading}
+              className={`px-3 py-2 rounded-lg flex items-center text-sm ${
+                darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
+              } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+            >
+              {isExportLoading && exportType === 'PDF' ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-1" />
+                  Export PDF
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setIsDocModalOpen(true)}
+              className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+            >
+              <Info className="w-4 h-4 mr-1" />
+              Learn More
+            </button>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
           </div>
         </div>
-      )}
-      {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
-        {[
-          {
-            title: "Total BTC Portfolio Value",
-            value: results.btc_portfolio_value,
-            description: "Raw value of BTC holdings (Treasury × Current Price)",
-            tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
-            icon: DollarSign,
-            format: "currency"
-          },
-          {
-            title: "Structured Product Bundle Value",
-            value: results.preferred_bundle.bundle_value,
-            description: "Weighted value of NAV, dilution, and convertible note",
-            tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
-            icon: Briefcase,
-            format: "currency"
-          },
-          {
-            title: "NAV Erosion Risk",
-            value: results.nav.erosion_prob,
-            description: "Probability NAV falls below 90% of average",
-            tooltip: "The likelihood that Net Asset Value drops below 90% of its average, based on simulated BTC price paths.",
-            icon: Shield,
-            format: "percentage"
-          },
-          {
-            title: "LTV Exceedance",
-            value: results.ltv.exceed_prob,
-            description: "Probability LTV exceeds the cap",
-            tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
-            icon: AlertTriangle,
-            format: "percentage"
-          },
-          {
-            title: "Expected ROE",
-            value: results.roe.avg_roe,
-            description: "Expected Return on Equity",
-            tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
-            icon: Target,
-            format: "percentage"
-          },
-          {
-            title: "Dilution Risk",
-            value: results.dilution.base_dilution,
-            description: "Base dilution from new equity raised",
-            tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate.",
-            icon: TrendingDown,
-            format: "percentage"
-          },
-        ].map(({ title, value, description, tooltip, icon, format }) => (
-          <MetricCard
-            key={title}
-            title={title}
-            value={value}
-            description={description}
-            tooltip={tooltip}
-            icon={icon}
-            format={format}
-            darkMode={darkMode}
-          />
-        ))}
-      </div>
+      </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8">
-        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+      <div className="p-4 sm:p-8">
+        {isExportLoading && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+            <div className={`p-6 rounded-lg ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900'} shadow-lg flex items-center space-x-3`}>
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+              <p className="text-sm">Preparing {exportType} for download...</p>
+            </div>
+          </div>
+        )}
+        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+          {[
+            {
+              title: "Total BTC Portfolio Value",
+              value: results.btc_portfolio_value,
+              description: "Raw value of BTC holdings (Treasury × Current Price)",
+              tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
+              icon: DollarSign,
+              format: "currency"
+            },
+            {
+              title: "Structured Product Bundle Value",
+              value: results.preferred_bundle.bundle_value,
+              description: "Weighted value of NAV, dilution, and convertible note",
+              tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
+              icon: Briefcase,
+              format: "currency"
+            },
+            {
+              title: "NAV Erosion Risk",
+              value: results.nav.erosion_prob,
+              description: "Probability NAV falls below 90% of average",
+              tooltip: "The likelihood that Net Asset Value drops below 90% of its average, based on simulated BTC price paths.",
+              icon: Shield,
+              format: "percentage"
+            },
+            {
+              title: "LTV Exceedance",
+              value: results.ltv.exceed_prob,
+              description: "Probability LTV exceeds the cap",
+              tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
+              icon: AlertTriangle,
+              format: "percentage"
+            },
+            {
+              title: "Expected ROE",
+              value: results.roe.avg_roe,
+              description: "Expected Return on Equity",
+              tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
+              icon: Target,
+              format: "percentage"
+            },
+            {
+              title: "Dilution Risk",
+              value: results.dilution.base_dilution,
+              description: "Base dilution from new equity raised",
+              tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate.",
+              icon: TrendingDown,
+              format: "percentage"
+            },
+          ].map(({ title, value, description, tooltip, icon, format }) => (
+            <MetricCard
+              key={title}
+              title={title}
+              value={value}
+              description={description}
+              tooltip={tooltip}
+              icon={icon}
+              format={format}
+              darkMode={darkMode}
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8">
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              NAV Path Simulation
+            </h3>
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={results.nav.nav_paths}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                  <XAxis dataKey="time" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              LTV Risk Distribution
+            </h3>
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={results.ltv.ltv_distribution}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                  <XAxis dataKey="ltv" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="frequency"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* New Scenario Comparison Section */}
+        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-8`}>
           <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            NAV Path Simulation
+            Scenario Comparison
           </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <div className="flex space-x-4 mb-4 sm:mb-0">
+              <select
+                value={selectedMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+                className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="nav">NAV Paths</option>
+                <option value="ltv">LTV Paths</option>
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Object.keys(visibleScenarios).map((scenario) => (
+                <label key={scenario} className="flex items-center space-x-1 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={visibleScenarios[scenario]}
+                    onChange={() =>
+                      setVisibleScenarios({
+                        ...visibleScenarios,
+                        [scenario]: !visibleScenarios[scenario],
+                      })
+                    }
+                    className="rounded text-blue-600"
+                  />
+                  <span className={darkMode ? 'text-slate-300' : 'text-gray-700'}>{scenario}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <div className="h-48 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={results.nav.nav_paths}>
+              <LineChart>
                 <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
                 <XAxis dataKey="time" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
                 <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
@@ -823,8 +959,26 @@ const App = () => {
                     border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
                     borderRadius: '8px'
                   }}
+                  formatter={(value, name) => [
+                    selectedMetric === 'nav' ? value.toFixed(2) : (value * 100).toFixed(1) + '%',
+                    name
+                  ]}
                 />
-                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Legend />
+                {Object.entries(scenarioPaths)
+                  .filter(([scenario]) => visibleScenarios[scenario])
+                  .map(([scenario, path]) => (
+                    <Line
+                      key={scenario}
+                      type="monotone"
+                      dataKey="value"
+                      data={path}
+                      name={scenario}
+                      stroke={colors[scenario]}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -832,243 +986,214 @@ const App = () => {
 
         <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
           <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            LTV Risk Distribution
+            Scenario Analysis
           </h3>
-          <div className="h-48 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={results.ltv.ltv_distribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                <XAxis dataKey="ltv" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                    border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                    borderRadius: '8px'
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="frequency"
-                  stroke="#10b981"
-                  fill="#10b981"
-                  fillOpacity={0.3}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Scenario Analysis
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                <th className={`text-left py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Scenario</th>
-                <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
-                <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
-                <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
-                <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Probability</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Target Case</td>
-                <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                  ${assumptions.targetBTCPrice.toFixed(0)}
-                </td>
-                <td className={`py-2 px-3 text-right font-medium ${results.target_metrics.target_nav > results.nav.avg_nav ? 'text-green-400' : 'text-red-400'}`}>
-                  {(((results.target_metrics.target_nav - results.nav.avg_nav) / results.nav.avg_nav) * 100).toFixed(1)}%
-                </td>
-                <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                  {(results.target_metrics.target_ltv * 100).toFixed(1)}%
-                </td>
-                <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
-              </tr>
-              {results.scenario_metrics && Object.entries(results.scenario_metrics).map(([scenarioName, metrics]) => (
-                <tr key={scenarioName} className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                  <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {scenarioName}
-                  </td>
-                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                    ${metrics.btc_price.toFixed(0)}
-                  </td>
-                  <td className={`py-2 px-3 text-right font-medium ${metrics.nav_impact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {metrics.nav_impact.toFixed(1)}%
-                  </td>
-                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                    {(metrics.ltv_ratio * 100).toFixed(1)}%
-                  </td>
-                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                    {(metrics.probability * 100).toFixed(1)}%
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <th className={`text-left py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Scenario</th>
+                  <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
+                  <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
+                  <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
+                  <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Probability</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    {bespokePanelOpen && (
-      <div className={`fixed inset-0 sm:right-0 sm:top-0 sm:h-full sm:w-80 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
-        <div className="p-4 sm:p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Bespoke Analysis
-            </h3>
-            <button
-              onClick={() => setBespokePanelOpen(false)}
-              className={`p-2 rounded-lg text-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                Custom Parameter
-              </h4>
-              <select
-                value={selectedParam}
-                onChange={(e) => setSelectedParam(e.target.value)}
-                className={`w-full mb-3 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Select Parameter</option>
-                {Object.keys(assumptions).map((key) => (
-                  <option key={key} value={key}>{key}</option>
+              </thead>
+              <tbody>
+                <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Target Case</td>
+                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                    ${assumptions.targetBTCPrice.toFixed(0)}
+                  </td>
+                  <td className={`py-2 px-3 text-right font-medium ${results.target_metrics.target_nav > results.nav.avg_nav ? 'text-green-400' : 'text-red-400'}`}>
+                    {(((results.target_metrics.target_nav - results.nav.avg_nav) / results.nav.avg_nav) * 100).toFixed(1)}%
+                  </td>
+                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                    {(results.target_metrics.target_ltv * 100).toFixed(1)}%
+                  </td>
+                  <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
+                </tr>
+                {results.scenario_metrics && Object.entries(results.scenario_metrics).map(([scenarioName, metrics]) => (
+                  <tr key={scenarioName} className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {scenarioName}
+                    </td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                      ${metrics.btc_price.toFixed(0)}
+                    </td>
+                    <td className={`py-2 px-3 text-right font-medium ${metrics.nav_impact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {metrics.nav_impact.toFixed(1)}%
+                    </td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                      {(metrics.ltv_ratio * 100).toFixed(1)}%
+                    </td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                      {(metrics.probability * 100).toFixed(1)}%
+                    </td>
+                  </tr>
                 ))}
-              </select>
-              <InputField
-                label="Parameter Value"
-                value={paramValue}
-                onChange={(val) => setParamValue(val)}
-                tooltip="Enter a value for the selected parameter"
-                darkMode={darkMode}
-              />
-              <button
-                onClick={() => handleWhatIf(selectedParam, paramValue)}
-                disabled={isWhatIfLoading || !selectedParam || !paramValue}
-                className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading || !selectedParam || !paramValue ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Run What-If
-              </button>
-            </div>
-
-            <div>
-              <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                What-If Scenarios
-              </h4>
-              <HybridInput
-                label="BTC Price Shock"
-                value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
-                onChange={(value) => {
-                  const newTargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
-                  setAssumptions({ ...assumptions, targetBTCPrice: newTargetBTCPrice });
-                  handleWhatIf('targetBTCPrice', newTargetBTCPrice);
-                }}
-                min={-0.5}
-                max={0.5}
-                step={0.05}
-                suffix="%"
-                darkMode={darkMode}
-              />
-            </div>
-
-            <div>
-              <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                Optimization Controls
-              </h4>
-              <button
-                onClick={() => handleWhatIf('LTV_Cap', 'optimize')}
-                disabled={isWhatIfLoading}
-                className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Optimize LTV Cap
-              </button>
-              <button
-                onClick={() => handleWhatIf('beta_ROE', 'maximize')}
-                disabled={isWhatIfLoading}
-                className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Maximize ROE
-              </button>
-            </div>
-
-            <div>
-              <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                Export What-If Results
-              </h4>
-              <button
-                onClick={() => {
-                  if (!selectedParam || !paramValue) {
-                    setError('Please select a parameter and enter a valid value.');
-                    return;
-                  }
-                  if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                  handleExport('csv', '/api/what_if/', selectedParam, paramValue);
-                }}
-                disabled={isExportLoading || isWhatIfLoading}
-                className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${
-                  isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-                }`}
-              >
-                {isExportLoading && exportType === 'CSV' ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                    Exporting CSV...
-                  </>
-                ) : (
-                  'Export CSV'
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  if (!selectedParam || !paramValue) {
-                    setError('Please select a parameter and enter a valid value.');
-                    return;
-                  }
-                  if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                  handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
-                }}
-                disabled={isExportLoading || isWhatIfLoading}
-                className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${
-                  isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-                }`}
-              >
-                {isExportLoading && exportType === 'PDF' ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                    Exporting PDF...
-                  </>
-                ) : (
-                  'Export PDF'
-                )}
-              </button>
-            </div>
-
-            {results?.optimized_param && (
-              <div>
-                <h4 className={`font-medium mb-2 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Optimized Parameter
-                </h4>
-                <p className={`text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {Object.keys(results.optimized_param)[0]}: {Object.values(results.optimized_param)[0].toFixed(2)}
-                </p>
-              </div>
-            )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    )}
-    <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
-  </div>
-);
+
+      {bespokePanelOpen && (
+        <div className={`fixed inset-0 sm:right-0 sm:top-0 sm:h-full sm:w-80 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
+          <div className="p-4 sm:p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Bespoke Analysis
+              </h3>
+              <button
+                onClick={() => setBespokePanelOpen(false)}
+                className={`p-2 rounded-lg text-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Custom Parameter
+                </h4>
+                <select
+                  value={selectedParam}
+                  onChange={(e) => setSelectedParam(e.target.value)}
+                  className={`w-full mb-3 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                >
+                  <option value="">Select Parameter</option>
+                  {Object.keys(assumptions).map((key) => (
+                    <option key={key} value={key}>{key}</option>
+                  ))}
+                </select>
+                <InputField
+                  label="Parameter Value"
+                  value={paramValue}
+                  onChange={(val) => setParamValue(val)}
+                  tooltip="Enter a value for the selected parameter"
+                  darkMode={darkMode}
+                />
+                <button
+                  onClick={() => handleWhatIf(selectedParam, paramValue)}
+                  disabled={isWhatIfLoading || !selectedParam || !paramValue}
+                  className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading || !selectedParam || !paramValue ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Run What-If
+                </button>
+              </div>
+
+              <div>
+                <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  What-If Scenarios
+                </h4>
+                <HybridInput
+                  label="BTC Price Shock"
+                  value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
+                  onChange={(value) => {
+                    const newTargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
+                    setAssumptions({ ...assumptions, targetBTCPrice: newTargetBTCPrice });
+                    handleWhatIf('targetBTCPrice', newTargetBTCPrice);
+                  }}
+                  min={-0.5}
+                  max={0.5}
+                  step={0.05}
+                  suffix="%"
+                  darkMode={darkMode}
+                />
+              </div>
+
+              <div>
+                <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Optimization Controls
+                </h4>
+                <button
+                  onClick={() => handleWhatIf('LTV_Cap', 'optimize')}
+                  disabled={isWhatIfLoading}
+                  className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Optimize LTV Cap
+                </button>
+                <button
+                  onClick={() => handleWhatIf('beta_ROE', 'maximize')}
+                  disabled={isWhatIfLoading}
+                  className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  Maximize ROE
+                </button>
+              </div>
+
+              <div>
+                <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Export What-If Results
+                </h4>
+                <button
+                  onClick={() => {
+                    if (!selectedParam || !paramValue) {
+                      setError('Please select a parameter and enter a valid value.');
+                      return;
+                    }
+                    if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
+                    handleExport('csv', '/api/what_if/', selectedParam, paramValue);
+                  }}
+                  disabled={isExportLoading || isWhatIfLoading}
+                  className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${
+                    isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+                  }`}
+                >
+                  {isExportLoading && exportType === 'CSV' ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                      Exporting CSV...
+                    </>
+                  ) : (
+                    'Export CSV'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (!selectedParam || !paramValue) {
+                      setError('Please select a parameter and enter a valid value.');
+                      return;
+                    }
+                    if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
+                    handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
+                  }}
+                  disabled={isExportLoading || isWhatIfLoading}
+                  className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${
+                    isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+                  }`}
+                >
+                  {isExportLoading && exportType === 'PDF' ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                      Exporting PDF...
+                    </>
+                  ) : (
+                    'Export PDF'
+                  )}
+                </button>
+              </div>
+
+              {results?.optimized_param && (
+                <div>
+                  <h4 className={`font-medium mb-2 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Optimized Parameter
+                  </h4>
+                  <p className={`text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {Object.keys(results.optimized_param)[0]}: {Object.values(results.optimized_param)[0].toFixed(2)}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
+    </div>
+  );
+};
 
   // Render based on current page
   if (currentPage === 'landing') return <LandingPage />;
