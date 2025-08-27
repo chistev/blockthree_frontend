@@ -130,7 +130,7 @@ const DocumentationModal = ({ isOpen, onClose, darkMode }) => {
 // API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
-    const response = await fetch('cperez.pythonanywhere.com/api/btc_price/', {
+    const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -287,7 +287,7 @@ const App = () => {
 
   const handleAPIRequest = async (endpoint, body, setLoading, errorMessage) => {
     try {
-      const response = await fetch(`cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -363,7 +363,7 @@ const App = () => {
         body.param = param;
         body.value = value;
       }
-      const response = await fetch(`cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
