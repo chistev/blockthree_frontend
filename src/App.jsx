@@ -42,10 +42,10 @@ const DEFAULT_ASSUMPTIONS = {
   sigma: 0.55,
   t: 1.0,
   delta: 0.08,
-  initial_equity_value: 1000000,
-  new_equity_raised: 50000,
+  initial_equity_value: 90000000,
+  new_equity_raised: 5000000,
   IssuePrice: 117000,
-  LoanPrincipal: 50000000,
+  LoanPrincipal: 25000000, 
   cost_of_debt: 0.06,
   dilution_vol_estimate: 0.55,
   LTV_Cap: 0.5,
@@ -108,7 +108,13 @@ const DocumentationModal = ({ isOpen, onClose, darkMode }) => {
           <strong>Expected ROE</strong>: Return on Equity, calculated using the CAPM model adjusted for BTC volatility and beta.
         </p>
         <p className="text-sm mb-4">
-          <strong>Dilution Risk</strong>: The base dilution from new equity raised, adjusted by simulated NAV paths and volatility.
+          <strong>Dilution Risk</strong>: The base dilution from new equity raised, adjusted by simulated NAV paths and volatility. Structure (Convertible Note or BTC-Collateralized Loan) is chosen based on whether base dilution exceeds 10%.
+        </p>
+        <p className="text-sm mb-4">
+          <strong>Price Distribution Analysis</strong>: Empirical probabilities from Monte Carlo simulations, including Bull Market (BTC price ≥ 1.5x current), Bear Market (≤ 0.7x), Stress Test (≤ 0.4x), and Normal Market (0.8x to 1.2x). Also includes Value at Risk (5th percentile) and Expected Shortfall (average price in worst 5% of scenarios).
+        </p>
+        <p className="text-sm mb-4">
+          <strong>Scenario Analysis</strong>: Uses fixed, assumption-based probabilities for Bull, Base, Bear, and Stress Test scenarios. These are separate from empirical probabilities and are intended for narrative analysis, with some scenarios marked as stress tests.
         </p>
         <button
           onClick={onClose}
@@ -124,7 +130,7 @@ const DocumentationModal = ({ isOpen, onClose, darkMode }) => {
 // API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
-    const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/', {
+    const response = await fetch('cperez.pythonanywhere.com/api/btc_price/', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -179,6 +185,7 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   dilution: {
     base_dilution: backendResults.dilution.base_dilution,
     avg_dilution: backendResults.dilution.avg_dilution,
+    structure_threshold_breached: backendResults.dilution.structure_threshold_breached, // New field
   },
   ltv: {
     avg_ltv: backendResults.ltv.avg_ltv,
@@ -200,6 +207,7 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
     target_bundle_value: backendResults.target_metrics.target_bundle_value,
   },
   scenario_metrics: backendResults.scenario_metrics,
+  distribution_metrics: backendResults.distribution_metrics, // Add new distribution metrics
   optimized_param: backendResults.optimized_param || null,
 });
 
@@ -279,7 +287,7 @@ const App = () => {
 
   const handleAPIRequest = async (endpoint, body, setLoading, errorMessage) => {
     try {
-      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`cperez.pythonanywhere.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -355,7 +363,7 @@ const App = () => {
         body.param = param;
         body.value = value;
       }
-      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`cperez.pythonanywhere.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -799,8 +807,8 @@ const App = () => {
               {
                 title: "Dilution Risk",
                 value: results.dilution.base_dilution,
-                description: "Base dilution from new equity raised",
-                tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate.",
+                description: `Base dilution from new equity raised. Structure: ${results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'}`,
+                tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate. Structure chosen based on base dilution threshold (10%).",
                 icon: TrendingDown,
                 format: "percentage"
               },
@@ -988,7 +996,8 @@ const App = () => {
                     <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
                     <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
                     <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Probability</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Assumed Probability</th>
+                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Type</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1004,6 +1013,7 @@ const App = () => {
                       {(results.target_metrics.target_ltv * 100).toFixed(1)}%
                     </td>
                     <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
+                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Target</td>
                   </tr>
                   {results.scenario_metrics && Object.entries(results.scenario_metrics).map(([scenarioName, metrics]) => (
                     <tr key={scenarioName} className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
@@ -1020,7 +1030,10 @@ const App = () => {
                         {(metrics.ltv_ratio * 100).toFixed(1)}%
                       </td>
                       <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                        {(metrics.probability * 100).toFixed(1)}%
+                        {(metrics.assumed_probability * 100).toFixed(1)}%
+                      </td>
+                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
+                        {metrics.scenario_type === 'stress_test' ? 'Stress Test' : 'Standard'}
                       </td>
                     </tr>
                   ))}
