@@ -827,78 +827,92 @@ const App = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8">
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                NAV Path Simulation
-              </h3>
-              <div className="h-48 sm:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={results.nav.nav_paths}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                    <XAxis
-                      dataKey="time"
-                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                      name="Time (Normalized)"
-                      label={{ value: 'Time (Normalized)', position: 'insideBottomRight', offset: -10, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-                    />
-                    <YAxis
-                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                      name="NAV"
-                      label={{ value: 'NAV', angle: -90, position: 'insideLeft', offset: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+  <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+    <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+      NAV Path Simulation
+    </h3>
+    <div className="h-48 sm:h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={results.nav.nav_paths}
+          margin={{ top: 10, right: 30, left: 30, bottom: 30 }} // Adjusted left margin for more Y-axis space
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+          <XAxis
+            dataKey="time"
+            stroke={darkMode ? '#9ca3af' : '#6b7280'}
+            name="Time (Normalized)"
+            label={{ value: 'Time (Normalized)', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+            padding={{ left: 10, right: 10 }}
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => value.toFixed(2)}
+          />
+          <YAxis
+            stroke={darkMode ? '#9ca3af' : '#6b7280'}
+            name="NAV"
+            label={{ value: 'NAV', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }} // Increased offset to -20
+            tick={{ fontSize: 12 }} // Added smaller font size for consistency
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+              border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+              borderRadius: '8px'
+            }}
+          />
+          <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
 
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                LTV Risk Distribution
-              </h3>
-              <div className="h-48 sm:h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={results.ltv.ltv_distribution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                    <XAxis
-                      dataKey="ltv"
-                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                      name="LTV Ratio"
-                      label={{ value: 'LTV Ratio', position: 'insideBottomRight', offset: -10, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-                    />
-                    <YAxis
-                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                      name="Frequency"
-                      label={{ value: 'Frequency', angle: -90, position: 'insideLeft', offset: 10, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="frequency"
-                      stroke="#10b981"
-                      fill="#10b981"
-                      fillOpacity={0.3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
+  <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+    <h3 className={`text-base ali font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+      LTV Risk Distribution
+    </h3>
+    <div className="h-48 sm:h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart
+          data={results.ltv.ltv_distribution}
+          margin={{ top: 10, right: 30, left: 30, bottom: 30 }} // Adjusted left margin for more Y-axis space
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+          <XAxis
+            dataKey="ltv"
+            stroke={darkMode ? '#9ca3af' : '#6b7280'}
+            name="LTV Ratio"
+            label={{ value: 'LTV Ratio', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+            padding={{ left: 10, right: 10 }}
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => parseFloat(value).toFixed(2)}
+          />
+          <YAxis
+            stroke={darkMode ? '#9ca3af' : '#6b7280'}
+            name="Frequency"
+            label={{ value: 'Frequency', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }} // Increased offset to -20
+            tick={{ fontSize: 12 }} // Added smaller font size for consistency
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+              border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+              borderRadius: '8px'
+            }}
+          />
+          <Area
+            type="monotone"
+            dataKey="frequency"
+            stroke="#10b981"
+            fill="#10b981"
+            fillOpacity={0.3}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+</div>
 
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-8`}>
+<div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-8`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Scenario Comparison
             </h3>
@@ -982,65 +996,7 @@ const App = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Scenario Analysis
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <th className={`text-left py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Scenario</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>BTC Price</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>NAV Impact</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>LTV Ratio</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Assumed Probability</th>
-                    <th className={`text-right py-2 px-3 font-medium ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Target Case</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                      ${assumptions.targetBTCPrice.toFixed(0)}
-                    </td>
-                    <td className={`py-2 px-3 text-right font-medium ${results.target_metrics.target_nav > results.nav.avg_nav ? 'text-green-400' : 'text-red-400'}`}>
-                      {(((results.target_metrics.target_nav - results.nav.avg_nav) / results.nav.avg_nav) * 100).toFixed(1)}%
-                    </td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                      {(results.target_metrics.target_ltv * 100).toFixed(1)}%
-                    </td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>User Input</td>
-                    <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>Target</td>
-                  </tr>
-                  {results.scenario_metrics && Object.entries(results.scenario_metrics).map(([scenarioName, metrics]) => (
-                    <tr key={scenarioName} className={`border-b ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                      <td className={`py-2 px-3 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {scenarioName}
-                      </td>
-                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                        ${metrics.btc_price.toFixed(0)}
-                      </td>
-                      <td className={`py-2 px-3 text-right font-medium ${metrics.nav_impact >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {metrics.nav_impact.toFixed(1)}%
-                      </td>
-                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                        {(metrics.ltv_ratio * 100).toFixed(1)}%
-                      </td>
-                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                        {(metrics.assumed_probability * 100).toFixed(1)}%
-                      </td>
-                      <td className={`py-2 px-3 text-right ${darkMode ? 'text-slate-300' : 'text-gray-600'}`}>
-                        {metrics.scenario_type === 'stress_test' ? 'Stress Test' : 'Standard'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+</div>
         </div>
 
         {bespokePanelOpen && (
