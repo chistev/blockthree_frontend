@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import HybridInput from './components/HybridInput';
 import InputField from './components/InputField';
 import DocumentationModal from './components/DocumentationModal';
@@ -244,7 +244,7 @@ const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) =
   }
 };
 
-const loadConfiguration = (configName, setAssumptions, setSavedConfigs, setError) => {
+const loadConfiguration = (configName, setAssumptions, setError) => {
   try {
     const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
     if (existingConfigs[configName]) {
@@ -294,11 +294,10 @@ const App = () => {
   const [selectedParam, setSelectedParam] = useState('');
   const [paramValue, setParamValue] = useState('');
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
+  const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   // New state for saved configurations
   const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
-  const [configName, setConfigName] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState('');
 
   useEffect(() => {
     fetchBTCPrice(setAssumptions, setError);
@@ -433,289 +432,317 @@ const App = () => {
     </div>
   );
 
-  const AssumptionsPage = () => (
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-          <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-            <button
-              onClick={() => setCurrentPage('landing')}
-              className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-              title="Back to Home"
-            >
-              <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-              Home
-            </button>
-            <div>
-              <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Model Assumptions
-              </h1>
-              <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
-                Configure parameters for risk analysis and treasury optimization
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
-          >
-            {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
-          </button>
-        </div>
+  const AssumptionsPage = () => {
+    // Move configuration state to the component to prevent re-renders
+    const [configName, setConfigName] = useState('');
+    const [selectedConfig, setSelectedConfig] = useState('');
+    const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
 
-        {/* New Configuration Management Section */}
-        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
-          <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Saved Configurations
-          </h3>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <input
-              type="text"
-              value={configName}
-              onChange={(e) => setConfigName(e.target.value)}
-              placeholder="Enter configuration name"
-              className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
-            />
-            <button
-              onClick={() => saveConfiguration(assumptions, configName, setSavedConfigs, setError)}
-              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!configName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!configName.trim()}
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Save
-            </button>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <select
-              value={selectedConfig}
-              onChange={(e) => setSelectedConfig(e.target.value)}
-              className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-            >
-              <option value="">Select a saved configuration</option>
-              {Object.keys(savedConfigs).map((name) => (
-                <option key={name} value={name}>
-                  {name} ({new Date(savedConfigs[name].timestamp).toLocaleString()})
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => loadConfiguration(selectedConfig, setAssumptions, setSavedConfigs, setError)}
-              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!selectedConfig}
-            >
-              <Folder className="w-4 h-4 mr-2" />
-              Load
-            </button>
-            <button
-              onClick={() => deleteConfiguration(selectedConfig, setSavedConfigs, setError)}
-              className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={!selectedConfig}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </button>
-          </div>
-        </div>
+    // Update parent's savedConfigs when localSavedConfigs changes
+    useEffect(() => {
+      setSavedConfigs(localSavedConfigs);
+    }, [localSavedConfigs]);
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              BTC Parameters
-            </h3>
-            <InputField
-              label="BTC Treasury (Quantity)"
-              value={assumptions.BTC_treasury}
-              onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
-              suffix="BTC"
-              tooltip="The amount of Bitcoin held in the treasury"
-              darkMode={darkMode}
-            />
-            <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                Current BTC Price
-              </label>
-              <div className={`w-full px-3 py-2 rounded-lg border opacity-75 ${darkMode ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-gray-200 border-gray-300 text-gray-500'} flex items-center justify-between`}>
-                <span>{assumptions.BTC_current_market_price ? `$${assumptions.BTC_current_market_price.toFixed(2)}` : 'Loading...'}</span>
-                <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>USD</span>
+    const handleSaveConfiguration = useCallback((name) => {
+      saveConfiguration(assumptions, name, setLocalSavedConfigs, setError);
+      setConfigName('');
+    }, [assumptions]);
+
+    const handleLoadConfiguration = useCallback((name) => {
+      loadConfiguration(name, setAssumptions, setError);
+    }, []);
+
+    const handleDeleteConfiguration = useCallback((name) => {
+      deleteConfiguration(name, setLocalSavedConfigs, setError);
+      if (selectedConfig === name) {
+        setSelectedConfig('');
+      }
+    }, [selectedConfig]);
+
+    return (
+      <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+            <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+              <button
+                onClick={() => setCurrentPage('landing')}
+                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                title="Back to Home"
+              >
+                <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+                Home
+              </button>
+              <div>
+                <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Model Assumptions
+                </h1>
+                <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
+                  Configure parameters for risk analysis and treasury optimization
+                </p>
               </div>
             </div>
-            <InputField
-              label="Target BTC Price"
-              value={assumptions.targetBTCPrice}
-              onChange={(val) => setAssumptions({ ...assumptions, targetBTCPrice: val })}
-              suffix="USD"
-              tooltip="Your expected Bitcoin price at the end of the time horizon"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="Issue Price"
-              value={assumptions.IssuePrice}
-              onChange={(val) => setAssumptions({ ...assumptions, IssuePrice: val })}
-              suffix="USD"
-              tooltip="Price at which convertible notes are issued"
-              darkMode={darkMode}
-            />
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
+            >
+              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
+            </button>
           </div>
 
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          {/* New Configuration Management Section */}
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Model Parameters
+              Saved Configurations
             </h3>
-            {[
-              { label: "Expected Drift (μ)", key: "mu", min: 0.35, max: 0.50, step: 0.01 },
-              { label: "Volatility (σ)", key: "sigma", min: 0.50, max: 0.80, step: 0.01 },
-              { label: "Time Horizon", key: "t", min: 0.25, max: 2.0, step: 0.25, suffix: " years" },
-              { label: "Delta", key: "delta", min: 0.05, max: 0.15, step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
-              { label: "Expected BTC Return", key: "expected_return_btc", min: 0.1, max: 0.6, step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
-              { label: "Risk-Free Rate", key: "risk_free_rate", min: 0.01, max: 0.06, step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
-            ].map(({ label, key, min, max, step, suffix, tooltip }) => (
-              <HybridInput
-                key={key}
-                label={label}
-                value={assumptions[key]}
-                onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                min={min}
-                max={max}
-                step={step}
-                suffix={suffix}
-                tooltip={tooltip}
-                darkMode={darkMode}
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <input
+                type="text"
+                value={configName}
+                onChange={(e) => setConfigName(e.target.value)}
+                placeholder="Enter configuration name"
+                className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
               />
-            ))}
-          </div>
-
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Debt & Equity Parameters
-            </h3>
-            <InputField
-              label="Loan Principal"
-              value={assumptions.LoanPrincipal}
-              onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
-              suffix="USD"
-              tooltip="Principal amount of the loan"
-              darkMode={darkMode}
-            />
-            <HybridInput
-              label="Cost of Debt"
-              value={assumptions.cost_of_debt}
-              onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
-              min={0}
-              max={0.12}
-              step={0.001}
-              suffix="%"
-              tooltip="Interest rate on the loan"
-              darkMode={darkMode}
-            />
-            <HybridInput
-              label="LTV Cap"
-              value={assumptions.LTV_Cap}
-              onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
-              min={0}
-              max={0.90}
-              step={0.001}
-              suffix="%"
-              tooltip="Maximum loan-to-value ratio"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="Initial Equity Value"
-              value={assumptions.initial_equity_value}
-              onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
-              suffix="USD"
-              tooltip="Initial value of equity"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="New Equity Raised"
-              value={assumptions.new_equity_raised}
-              onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
-              suffix="USD"
-              tooltip="Amount of new equity raised"
-              darkMode={darkMode}
-            />
-            <HybridInput
-              label="Beta ROE"
-              value={assumptions.beta_ROE}
-              onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
-              min={1.0}
-              max={3.0}
-              step={0.1}
-              tooltip="Beta for return on equity"
-              darkMode={darkMode}
-            />
-          </div>
-
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Advanced Parameters
-            </h3>
-            {[
-              { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
-              { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", min: 0.3, max: 0.7, step: 0.01, tooltip: "Speed of mean reversion for volatility" },
-              { label: "Long-Run Volatility", key: "long_run_volatility", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
-              { label: "Paths", key: "paths", min: 1000, max: 20000, step: 1000, tooltip: "Number of simulation paths" },
-              { label: "Jump Intensity", key: "jump_intensity", min: 0.05, max: 0.2, step: 0.01, tooltip: "Intensity of jumps in BTC price" },
-              { label: "Jump Mean", key: "jump_mean", min: -0.1, max: 0.1, step: 0.01, tooltip: "Mean of jumps in BTC price" },
-              { label: "Jump Volatility", key: "jump_volatility", min: 0, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
-            ].map(({ label, key, min, max, step, suffix, tooltip }) => (
-              <HybridInput
-                key={key}
-                label={label}
-                value={assumptions[key]}
-                onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                min={min}
-                max={max}
-                step={step}
-                suffix={suffix}
-                tooltip={tooltip}
-                darkMode={darkMode}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={handleCalculate}
-            disabled={isCalculating || !assumptions.BTC_current_market_price}
-            className="bg-blue-600 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
-          >
-            {isCalculating ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Running Models ({calculationProgress}%)
-              </>
-            ) : (
-              <>
-                <Calculator className="w-4 h-4 mr-2" />
-                Run Models
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => setIsDocModalOpen(true)}
-            className={`px-4 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            <Info className="w-4 h-4 mr-1" />
-            Learn More
-          </button>
-        </div>
-        {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
-        {isCalculating && (
-          <div className="mt-6 max-w-md mx-auto">
-            <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${calculationProgress}%` }}
-              ></div>
+              <button
+                onClick={() => handleSaveConfiguration(configName)}
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!configName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!configName.trim()}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <select
+                value={selectedConfig}
+                onChange={(e) => setSelectedConfig(e.target.value)}
+                className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              >
+                <option value="">Select a saved configuration</option>
+                {Object.keys(localSavedConfigs).map((name) => (
+                  <option key={name} value={name}>
+                    {name} ({new Date(localSavedConfigs[name].timestamp).toLocaleString()})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => handleLoadConfiguration(selectedConfig)}
+                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!selectedConfig}
+              >
+                <Folder className="w-4 h-4 mr-2" />
+                Load
+              </button>
+              <button
+                onClick={() => handleDeleteConfiguration(selectedConfig)}
+                className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!selectedConfig}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </button>
             </div>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                BTC Parameters
+              </h3>
+              <InputField
+                label="BTC Treasury (Quantity)"
+                value={assumptions.BTC_treasury}
+                onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
+                suffix="BTC"
+                tooltip="The amount of Bitcoin held in the treasury"
+                darkMode={darkMode}
+              />
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Current BTC Price
+                </label>
+                <div className={`w-full px-3 py-2 rounded-lg border opacity-75 ${darkMode ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-gray-200 border-gray-300 text-gray-500'} flex items-center justify-between`}>
+                  <span>{assumptions.BTC_current_market_price ? `$${assumptions.BTC_current_market_price.toFixed(2)}` : 'Loading...'}</span>
+                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>USD</span>
+                </div>
+              </div>
+              <InputField
+                label="Target BTC Price"
+                value={assumptions.targetBTCPrice}
+                onChange={(val) => setAssumptions({ ...assumptions, targetBTCPrice: val })}
+                suffix="USD"
+                tooltip="Your expected Bitcoin price at the end of the time horizon"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Issue Price"
+                value={assumptions.IssuePrice}
+                onChange={(val) => setAssumptions({ ...assumptions, IssuePrice: val })}
+                suffix="USD"
+                tooltip="Price at which convertible notes are issued"
+                darkMode={darkMode}
+              />
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Model Parameters
+              </h3>
+              {[
+                { label: "Expected Drift (μ)", key: "mu", min: 0.35, max: 0.50, step: 0.01 },
+                { label: "Volatility (σ)", key: "sigma", min: 0.50, max: 0.80, step: 0.01 },
+                { label: "Time Horizon", key: "t", min: 0.25, max: 2.0, step: 0.25, suffix: " years" },
+                { label: "Delta", key: "delta", min: 0.05, max: 0.15, step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
+                { label: "Expected BTC Return", key: "expected_return_btc", min: 0.1, max: 0.6, step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
+                { label: "Risk-Free Rate", key: "risk_free_rate", min: 0.01, max: 0.06, step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
+              ].map(({ label, key, min, max, step, suffix, tooltip }) => (
+                <HybridInput
+                  key={key}
+                  label={label}
+                  value={assumptions[key]}
+                  onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
+                  min={min}
+                  max={max}
+                  step={step}
+                  suffix={suffix}
+                  tooltip={tooltip}
+                  darkMode={darkMode}
+                />
+              ))}
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Debt & Equity Parameters
+              </h3>
+              <InputField
+                label="Loan Principal"
+                value={assumptions.LoanPrincipal}
+                onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
+                suffix="USD"
+                tooltip="Principal amount of the loan"
+                darkMode={darkMode}
+              />
+              <HybridInput
+                label="Cost of Debt"
+                value={assumptions.cost_of_debt}
+                onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
+                min={0}
+                max={0.12}
+                step={0.001}
+                suffix="%"
+                tooltip="Interest rate on the loan"
+                darkMode={darkMode}
+              />
+              <HybridInput
+                label="LTV Cap"
+                value={assumptions.LTV_Cap}
+                onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
+                min={0}
+                max={0.90}
+                step={0.001}
+                suffix="%"
+                tooltip="Maximum loan-to-value ratio"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Initial Equity Value"
+                value={assumptions.initial_equity_value}
+                onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
+                suffix="USD"
+                tooltip="Initial value of equity"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="New Equity Raised"
+                value={assumptions.new_equity_raised}
+                onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
+                suffix="USD"
+                tooltip="Amount of new equity raised"
+                darkMode={darkMode}
+              />
+              <HybridInput
+                label="Beta ROE"
+                value={assumptions.beta_ROE}
+                onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
+                min={1.0}
+                max={3.0}
+                step={0.1}
+                tooltip="Beta for return on equity"
+                darkMode={darkMode}
+              />
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Advanced Parameters
+              </h3>
+              {[
+                { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
+                { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", min: 0.3, max: 0.7, step: 0.01, tooltip: "Speed of mean reversion for volatility" },
+                { label: "Long-Run Volatility", key: "long_run_volatility", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
+                { label: "Paths", key: "paths", min: 1000, max: 20000, step: 1000, tooltip: "Number of simulation paths" },
+                { label: "Jump Intensity", key: "jump_intensity", min: 0.05, max: 0.2, step: 0.01, tooltip: "Intensity of jumps in BTC price" },
+                { label: "Jump Mean", key: "jump_mean", min: -0.1, max: 0.1, step: 0.01, tooltip: "Mean of jumps in BTC price" },
+                { label: "Jump Volatility", key: "jump_volatility", min: 0, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
+              ].map(({ label, key, min, max, step, suffix, tooltip }) => (
+                <HybridInput
+                  key={key}
+                  label={label}
+                  value={assumptions[key]}
+                  onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
+                  min={min}
+                  max={max}
+                  step={step}
+                  suffix={suffix}
+                  tooltip={tooltip}
+                  darkMode={darkMode}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-center space-x-4">
+            <button
+              onClick={handleCalculate}
+              disabled={isCalculating || !assumptions.BTC_current_market_price}
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+            >
+              {isCalculating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Running Models ({calculationProgress}%)
+                </>
+              ) : (
+                <>
+                  <Calculator className="w-4 h-4 mr-2" />
+                  Run Models
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setIsDocModalOpen(true)}
+              className={`px-4 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            >
+              <Info className="w-4 h-4 mr-1" />
+              Learn More
+            </button>
+          </div>
+          {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
+          {isCalculating && (
+            <div className="mt-6 max-w-md mx-auto">
+              <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${calculationProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+        </div>
+        <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
       </div>
-      <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
-    </div>
-  );
+    );
+  };
 
   const DashboardPage = () => {
     const [selectedMetric, setSelectedMetric] = useState('nav');
@@ -837,7 +864,7 @@ const App = () => {
                 description: "Raw value of BTC holdings (Treasury × Current Price)",
                 tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
                 icon: DollarSign,
-                format: "currency",
+                format: "currency"
               },
               {
                 title: "Structured Product Bundle Value",
@@ -845,7 +872,7 @@ const App = () => {
                 description: "Weighted value of NAV, dilution, and convertible note",
                 tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
                 icon: Briefcase,
-                format: "currency",
+                format: "currency"
               },
               {
                 title: "NAV Erosion Risk",
@@ -853,7 +880,7 @@ const App = () => {
                 description: "Probability NAV falls below 90% of its average across simulations",
                 tooltip: "The likelihood that the Net Asset Value drops below 90% of its average value across all simulated BTC price paths, indicating potential downside risk.",
                 icon: Shield,
-                format: "percentage",
+                format: "percentage"
               },
               {
                 title: "LTV Exceedance",
@@ -861,7 +888,7 @@ const App = () => {
                 description: "Probability LTV exceeds the cap",
                 tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
                 icon: AlertTriangle,
-                format: "percentage",
+                format: "percentage"
               },
               {
                 title: "Expected ROE",
@@ -869,7 +896,7 @@ const App = () => {
                 description: "Expected Return on Equity",
                 tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
                 icon: Target,
-                format: "percentage",
+                format: "percentage"
               },
               {
                 title: "Dilution Risk",
@@ -877,7 +904,7 @@ const App = () => {
                 description: `Base dilution from new equity raised. Structure: ${results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'}`,
                 tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate. Structure chosen based on base dilution threshold (10%).",
                 icon: TrendingDown,
-                format: "percentage",
+                format: "percentage"
               },
             ].map(({ title, value, description, tooltip, icon, format }) => (
               <MetricCard
@@ -924,7 +951,7 @@ const App = () => {
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px',
+                        borderRadius: '8px'
                       }}
                     />
                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
@@ -963,7 +990,7 @@ const App = () => {
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px',
+                        borderRadius: '8px'
                       }}
                     />
                     <Area
@@ -1031,18 +1058,18 @@ const App = () => {
                       angle: -90,
                       position: 'insideLeft',
                       offset: 10,
-                      fill: darkMode ? '#9ca3af' : '#6b7280',
+                      fill: darkMode ? '#9ca3af' : '#6b7280'
                     }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                       border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px',
+                      borderRadius: '8px'
                     }}
                     formatter={(value, name) => [
                       selectedMetric === 'nav' ? value.toFixed(2) : (value * 100).toFixed(1) + '%',
-                      name,
+                      name
                     ]}
                   />
                   <Legend />
@@ -1064,163 +1091,160 @@ const App = () => {
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
 
-        {bespokePanelOpen && (
-          <div className={`fixed inset-0 sm:right-0 sm:top-0 sm:h-full sm:w-80 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
-            <div className="p-4 sm:p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Bespoke Analysis
-                </h3>
-                <button
-                  onClick={() => setBespokePanelOpen(false)}
-                  className={`p-2 rounded-lg text-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Custom Parameter
-                  </h4>
-                  <select
-                    value={selectedParam}
-                    onChange={(e) => setSelectedParam(e.target.value)}
-                    className={`w-full mb-3 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-                  >
-                    <option value="">Select Parameter</option>
-                    {Object.keys(assumptions).map((key) => (
-                      <option key={key} value={key}>{key}</option>
-                    ))}
-                  </select>
-                  <InputField
-                    label="Parameter Value"
-                    value={paramValue}
-                    onChange={(val) => setParamValue(val)}
-                    tooltip="Enter a value for the selected parameter"
-                    darkMode={darkMode}
-                  />
+          {bespokePanelOpen && (
+            <div className={`fixed inset-0 sm:right-0 sm:top-0 sm:h-full sm:w-80 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} border-l shadow-xl z-50 overflow-y-auto`}>
+              <div className="p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Bespoke Analysis
+                  </h3>
                   <button
-                    onClick={() => handleWhatIf(selectedParam, paramValue)}
-                    disabled={isWhatIfLoading || !selectedParam || !paramValue}
-                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading || !selectedParam || !paramValue ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => setBespokePanelOpen(false)}
+                    className={`p-2 rounded-lg text-lg ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}
                   >
-                    Run What-If
+                    ×
                   </button>
                 </div>
 
-                <div>
-                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    What-If Scenarios
-                  </h4>
-                  <HybridInput
-                    label="BTC Price Shock"
-                    value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
-                    onChange={(value) => {
-                      const newTargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
-                      setAssumptions({ ...assumptions, targetBTCPrice: newTargetBTCPrice });
-                      handleWhatIf('targetBTCPrice', newTargetBTCPrice);
-                    }}
-                    min={-0.5}
-                    max={0.5}
-                    step={0.05}
-                    suffix="%"
-                    darkMode={darkMode}
-                  />
-                </div>
-
-                <div>
-                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Optimization Controls
-                  </h4>
-                  <button
-                    onClick={() => handleWhatIf('LTV_Cap', 'optimize')}
-                    disabled={isWhatIfLoading}
-                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    Optimize LTV Cap
-                  </button>
-                  <button
-                    onClick={() => handleWhatIf('beta_ROE', 'maximize')}
-                    disabled={isWhatIfLoading}
-                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    Maximize ROE
-                  </button>
-                </div>
-
-                <div>
-                  <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Export What-If Results
-                  </h4>
-                  <button
-                    onClick={() => {
-                      if (!selectedParam || !paramValue) {
-                        setError('Please select a parameter and enter a valid value.');
-                        return;
-                      }
-                      if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                      handleExport('csv', '/api/what_if/', selectedParam, paramValue);
-                    }}
-                    disabled={isExportLoading || isWhatIfLoading}
-                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-                  >
-                    {isExportLoading && exportType === 'CSV' ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                        Exporting CSV...
-                      </>
-                    ) : (
-                      'Export CSV'
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!selectedParam || !paramValue) {
-                        setError('Please select a parameter and enter a valid value.');
-                                               return;
-                      }
-                      if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                      handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
-                    }}
-                    disabled={isExportLoading || isWhatIfLoading}
-                    className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
-                  >
-                    {isExportLoading && exportType === 'PDF' ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                        Exporting PDF...
-                      </>
-                    ) : (
-                      'Export PDF'
-                    )}
-                  </button>
-                </div>
-
-                {results?.optimized_param && (
+                <div className="space-y-6">
                   <div>
-                    <h4 className={`font-medium mb-2 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Optimized Parameter
+                    <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Custom Parameter
                     </h4>
-                    <p className={`text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {Object.keys(results.optimized_param)[0]}: {Object.values(results.optimized_param)[0].toFixed(2)}
-                    </p>
+                    <select
+                      value={selectedParam}
+                      onChange={(e) => setSelectedParam(e.target.value)}
+                      className={`w-full mb-3 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    >
+                      <option value="">Select Parameter</option>
+                      {Object.keys(assumptions).map((key) => (
+                        <option key={key} value={key}>{key}</option>
+                      ))}
+                    </select>
+                    <InputField
+                      label="Parameter Value"
+                      value={paramValue}
+                      onChange={(val) => setParamValue(val)}
+                      tooltip="Enter a value for the selected parameter"
+                      darkMode={darkMode}
+                    />
+                    <button
+                      onClick={() => handleWhatIf(selectedParam, paramValue)}
+                      disabled={isWhatIfLoading || !selectedParam || !paramValue}
+                      className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading || !selectedParam || !paramValue ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      Run What-If
+                    </button>
                   </div>
-                )}
+
+                  <div>
+                    <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      What-If Scenarios
+                    </h4>
+                    <HybridInput
+                      label="BTC Price Shock"
+                      value={assumptions.targetBTCPrice / assumptions.BTC_current_market_price - 1}
+                      onChange={(value) => {
+                        const newTargetBTCPrice = assumptions.BTC_current_market_price * (1 + value);
+                        setAssumptions({ ...assumptions, targetBTCPrice: newTargetBTCPrice });
+                        handleWhatIf('targetBTCPrice', newTargetBTCPrice);
+                      }}
+                      min={-0.5}
+                      max={0.5}
+                      step={0.05}
+                      suffix="%"
+                      darkMode={darkMode}
+                    />
+                  </div>
+
+                  <div>
+                    <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Optimization Controls
+                    </h4>
+                    <button
+                      onClick={() => handleWhatIf('LTV_Cap', 'optimize')}
+                      disabled={isWhatIfLoading}
+                      className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      Optimize LTV Cap
+                    </button>
+                    <button
+                      onClick={() => handleWhatIf('beta_ROE', 'maximize')}
+                      disabled={isWhatIfLoading}
+                      className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm ${isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      Maximize ROE
+                    </button>
+                  </div>
+
+                  <div>
+                    <h4 className={`font-medium mb-3 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Export What-If Results
+                    </h4>
+                    <button
+                      onClick={() => {
+                        if (!selectedParam || !paramValue) {
+                          setError('Please select a parameter and enter a valid value.');
+                          return;
+                        }
+                        if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
+                        handleExport('csv', '/api/what_if/', selectedParam, paramValue);
+                      }}
+                      disabled={isExportLoading || isWhatIfLoading}
+                      className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                    >
+                      {isExportLoading && exportType === 'CSV' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                          Exporting CSV...
+                        </>
+                      ) : (
+                        'Export CSV'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!selectedParam || !paramValue) {
+                          setError('Please select a parameter and enter a valid value.');
+                          return;
+                        }
+                        if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
+                        handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
+                      }}
+                      disabled={isExportLoading || isWhatIfLoading}
+                      className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+                    >
+                      {isExportLoading && exportType === 'PDF' ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                          Exporting PDF...
+                        </>
+                      ) : (
+                        'Export PDF'
+                      )}
+                    </button>
+                  </div>
+
+                  {results?.optimized_param && (
+                    <div>
+                      <h4 className={`font-medium mb-2 text-sm sm:text-base ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Optimized Parameter
+                      </h4>
+                      <p className={`text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {Object.keys(results.optimized_param)[0]}: {Object.values(results.optimized_param)[0].toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
+          )}
+          <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
+        </div>
       </div>
     );
   };
-
-  // State for results (was missing in the provided code)
-  const [results, setResults] = useState(null);
 
   // Render based on current page
   if (currentPage === 'landing') return <LandingPage />;
