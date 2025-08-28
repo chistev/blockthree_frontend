@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import HybridInput from './components/HybridInput'
+import HybridInput from './components/HybridInput';
 import InputField from './components/InputField';
 import DocumentationModal from './components/DocumentationModal';
 import './index.css';
@@ -18,7 +18,10 @@ import {
   Home,
   Download,
   FileText,
-  Info
+  Info,
+  Save,
+  Folder,
+  Trash2,
 } from 'lucide-react';
 import {
   LineChart,
@@ -30,10 +33,10 @@ import {
   ResponsiveContainer,
   AreaChart,
   Area,
-  Legend
+  Legend,
 } from 'recharts';
 
-// Constants for default assumptions
+// Constants for default assumptions (unchanged)
 const DEFAULT_ASSUMPTIONS = {
   BTC_treasury: 1000,
   BTC_purchased: 0,
@@ -46,7 +49,7 @@ const DEFAULT_ASSUMPTIONS = {
   initial_equity_value: 90000000,
   new_equity_raised: 5000000,
   IssuePrice: 117000,
-  LoanPrincipal: 25000000, 
+  LoanPrincipal: 25000000,
   cost_of_debt: 0.06,
   dilution_vol_estimate: 0.55,
   LTV_Cap: 0.5,
@@ -61,6 +64,7 @@ const DEFAULT_ASSUMPTIONS = {
   jump_volatility: 0.2,
 };
 
+// MetricCard component (unchanged)
 const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
   <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg relative group`}>
     <div className="flex items-center justify-between mb-3">
@@ -87,7 +91,7 @@ const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "
   </div>
 );
 
-// API Utilities
+// API Utilities (unchanged)
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
     const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/', {
@@ -145,7 +149,7 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   dilution: {
     base_dilution: backendResults.dilution.base_dilution,
     avg_dilution: backendResults.dilution.avg_dilution,
-    structure_threshold_breached: backendResults.dilution.structure_threshold_breached, // New field
+    structure_threshold_breached: backendResults.dilution.structure_threshold_breached,
   },
   ltv: {
     avg_ltv: backendResults.ltv.avg_ltv,
@@ -167,7 +171,7 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
     target_bundle_value: backendResults.target_metrics.target_bundle_value,
   },
   scenario_metrics: backendResults.scenario_metrics,
-  distribution_metrics: backendResults.distribution_metrics, // Add new distribution metrics
+  distribution_metrics: backendResults.distribution_metrics,
   optimized_param: backendResults.optimized_param || null,
 });
 
@@ -193,7 +197,7 @@ const validateWhatIfInput = (param, value, setError) => {
 
 const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
   const scenarios = results.scenario_metrics;
-  const timeSteps = 100; // Number of time steps for smooth paths
+  const timeSteps = 100;
   const paths = {};
 
   Object.entries(scenarios).forEach(([scenarioName, metrics]) => {
@@ -204,17 +208,14 @@ const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
 
     for (let i = 0; i <= timeSteps; i++) {
       const t = i / timeSteps;
-      // Linear interpolation for BTC price
       const interpolatedPrice = initialBTCPrice + t * (finalBTCPrice - initialBTCPrice);
 
       if (metricType === 'nav') {
-        // Simplified NAV calculation: CollateralValue * (1 + delta) - LoanPrincipal * cost_of_debt
         const collateralValue = totalBTC * interpolatedPrice;
         const nav = (collateralValue + collateralValue * assumptions.delta - assumptions.LoanPrincipal * assumptions.cost_of_debt) /
           (assumptions.initial_equity_value + assumptions.new_equity_raised);
         path.push({ time: t, value: nav });
       } else if (metricType === 'ltv') {
-        // LTV = LoanPrincipal / (totalBTC * price)
         const ltv = assumptions.LoanPrincipal / (totalBTC * interpolatedPrice);
         path.push({ time: t, value: ltv });
       }
@@ -225,6 +226,61 @@ const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
   return paths;
 };
 
+// New functions for saving and loading configurations
+const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
+  if (!configName.trim()) {
+    setError('Configuration name cannot be empty');
+    return;
+  }
+  try {
+    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
+    existingConfigs[configName] = { assumptions, timestamp: new Date().toISOString() };
+    localStorage.setItem('savedConfigs', JSON.stringify(existingConfigs));
+    setSavedConfigs(existingConfigs);
+    setError(null);
+  } catch (err) {
+    console.error('Failed to save configuration:', err);
+    setError('Failed to save configuration. Please try again.');
+  }
+};
+
+const loadConfiguration = (configName, setAssumptions, setSavedConfigs, setError) => {
+  try {
+    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
+    if (existingConfigs[configName]) {
+      setAssumptions(existingConfigs[configName].assumptions);
+      setError(null);
+    } else {
+      setError('Configuration not found');
+    }
+  } catch (err) {
+    console.error('Failed to load configuration:', err);
+    setError('Failed to load configuration. Please try again.');
+  }
+};
+
+const deleteConfiguration = (configName, setSavedConfigs, setError) => {
+  try {
+    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
+    delete existingConfigs[configName];
+    localStorage.setItem('savedConfigs', JSON.stringify(existingConfigs));
+    setSavedConfigs(existingConfigs);
+    setError(null);
+  } catch (err) {
+    console.error('Failed to delete configuration:', err);
+    setError('Failed to delete configuration. Please try again.');
+  }
+};
+
+const getSavedConfigurations = () => {
+  try {
+    return JSON.parse(localStorage.getItem('savedConfigs') || '{}');
+  } catch (err) {
+    console.error('Failed to retrieve saved configurations:', err);
+    return {};
+  }
+};
+
 const App = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
@@ -232,14 +288,17 @@ const App = () => {
   const [calculationProgress, setCalculationProgress] = useState(0);
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
   const [isWhatIfLoading, setIsWhatIfLoading] = useState(false);
-  const [isExportLoading, setIsExportLoading] = useState(false); // New state for export loading
-  const [exportType, setExportType] = useState(null); // Track export type (csv or pdf)
+  const [isExportLoading, setIsExportLoading] = useState(false);
+  const [exportType, setExportType] = useState(null);
   const [error, setError] = useState(null);
   const [selectedParam, setSelectedParam] = useState('');
   const [paramValue, setParamValue] = useState('');
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
-  const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  // New state for saved configurations
+  const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
+  const [configName, setConfigName] = useState('');
+  const [selectedConfig, setSelectedConfig] = useState('');
 
   useEffect(() => {
     fetchBTCPrice(setAssumptions, setError);
@@ -313,8 +372,8 @@ const App = () => {
   const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
     if (param && value && !validateWhatIfInput(param, value, setError)) return;
 
-    setIsExportLoading(true); // Set loading state
-    setExportType(format.toUpperCase()); // Set export type for UI feedback
+    setIsExportLoading(true);
+    setExportType(format.toUpperCase());
     setError(null);
 
     try {
@@ -343,7 +402,6 @@ const App = () => {
       console.error(`Export ${format} failed:`, err);
       setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
     } finally {
-      // Add a small delay to ensure UI feedback is visible
       setTimeout(() => {
         setIsExportLoading(false);
         setExportType(null);
@@ -382,8 +440,7 @@ const App = () => {
           <div className="flex items-center space-x-4 mb-4 sm:mb-0">
             <button
               onClick={() => setCurrentPage('landing')}
-              className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+              className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               title="Back to Home"
             >
               <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
@@ -404,6 +461,60 @@ const App = () => {
           >
             {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
+        </div>
+
+        {/* New Configuration Management Section */}
+        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+          <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Saved Configurations
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <input
+              type="text"
+              value={configName}
+              onChange={(e) => setConfigName(e.target.value)}
+              placeholder="Enter configuration name"
+              className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
+            />
+            <button
+              onClick={() => saveConfiguration(assumptions, configName, setSavedConfigs, setError)}
+              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!configName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!configName.trim()}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Save
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <select
+              value={selectedConfig}
+              onChange={(e) => setSelectedConfig(e.target.value)}
+              className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+            >
+              <option value="">Select a saved configuration</option>
+              {Object.keys(savedConfigs).map((name) => (
+                <option key={name} value={name}>
+                  {name} ({new Date(savedConfigs[name].timestamp).toLocaleString()})
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => loadConfiguration(selectedConfig, setAssumptions, setSavedConfigs, setError)}
+              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!selectedConfig}
+            >
+              <Folder className="w-4 h-4 mr-2" />
+              Load
+            </button>
+            <button
+              onClick={() => deleteConfiguration(selectedConfig, setSavedConfigs, setError)}
+              className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!selectedConfig}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -489,7 +600,7 @@ const App = () => {
               label="Cost of Debt"
               value={assumptions.cost_of_debt}
               onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
-              min={0} // Allow 0% for Cost of Debt
+              min={0}
               max={0.12}
               step={0.001}
               suffix="%"
@@ -500,7 +611,7 @@ const App = () => {
               label="LTV Cap"
               value={assumptions.LTV_Cap}
               onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
-              min={0} // Allow 0% for LTV Cap
+              min={0}
               max={0.90}
               step={0.001}
               suffix="%"
@@ -607,7 +718,7 @@ const App = () => {
   );
 
   const DashboardPage = () => {
-    const [selectedMetric, setSelectedMetric] = useState('nav'); // 'nav' or 'ltv'
+    const [selectedMetric, setSelectedMetric] = useState('nav');
     const [visibleScenarios, setVisibleScenarios] = useState({
       'Bull Case': true,
       'Base Case': true,
@@ -631,8 +742,7 @@ const App = () => {
             <div className="flex items-center space-x-4 mb-3 sm:mb-0">
               <button
                 onClick={() => setCurrentPage('landing')}
-                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                 title="Back to Home"
               >
                 <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
@@ -640,8 +750,7 @@ const App = () => {
               </button>
               <button
                 onClick={() => setCurrentPage('assumptions')}
-                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                 title="Back to Assumptions"
               >
                 <Sliders className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
@@ -662,8 +771,7 @@ const App = () => {
               <button
                 onClick={() => handleExport('csv')}
                 disabled={isExportLoading}
-                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
-                  } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
               >
                 {isExportLoading && exportType === 'CSV' ? (
                   <>
@@ -680,8 +788,7 @@ const App = () => {
               <button
                 onClick={() => handleExport('pdf')}
                 disabled={isExportLoading}
-                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'
-                  } ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+                className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
               >
                 {isExportLoading && exportType === 'PDF' ? (
                   <>
@@ -730,7 +837,7 @@ const App = () => {
                 description: "Raw value of BTC holdings (Treasury × Current Price)",
                 tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
                 icon: DollarSign,
-                format: "currency"
+                format: "currency",
               },
               {
                 title: "Structured Product Bundle Value",
@@ -738,7 +845,7 @@ const App = () => {
                 description: "Weighted value of NAV, dilution, and convertible note",
                 tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
                 icon: Briefcase,
-                format: "currency"
+                format: "currency",
               },
               {
                 title: "NAV Erosion Risk",
@@ -746,7 +853,7 @@ const App = () => {
                 description: "Probability NAV falls below 90% of its average across simulations",
                 tooltip: "The likelihood that the Net Asset Value drops below 90% of its average value across all simulated BTC price paths, indicating potential downside risk.",
                 icon: Shield,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "LTV Exceedance",
@@ -754,7 +861,7 @@ const App = () => {
                 description: "Probability LTV exceeds the cap",
                 tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
                 icon: AlertTriangle,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "Expected ROE",
@@ -762,7 +869,7 @@ const App = () => {
                 description: "Expected Return on Equity",
                 tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
                 icon: Target,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "Dilution Risk",
@@ -770,7 +877,7 @@ const App = () => {
                 description: `Base dilution from new equity raised. Structure: ${results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'}`,
                 tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate. Structure chosen based on base dilution threshold (10%).",
                 icon: TrendingDown,
-                format: "percentage"
+                format: "percentage",
               },
             ].map(({ title, value, description, tooltip, icon, format }) => (
               <MetricCard
@@ -787,92 +894,92 @@ const App = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-8">
-  <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-    <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-      NAV Path Simulation
-    </h3>
-    <div className="h-48 sm:h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={results.nav.nav_paths}
-          margin={{ top: 10, right: 30, left: 30, bottom: 30 }} // Adjusted left margin for more Y-axis space
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-          <XAxis
-            dataKey="time"
-            stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            name="Time (Normalized)"
-            label={{ value: 'Time (Normalized)', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-            padding={{ left: 10, right: 10 }}
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => value.toFixed(2)}
-          />
-          <YAxis
-            stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            name="NAV"
-            label={{ value: 'NAV', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }} // Increased offset to -20
-            tick={{ fontSize: 12 }} // Added smaller font size for consistency
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-              border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-              borderRadius: '8px'
-            }}
-          />
-          <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                NAV Path Simulation
+              </h3>
+              <div className="h-48 sm:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={results.nav.nav_paths}
+                    margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <XAxis
+                      dataKey="time"
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                      name="Time (Normalized)"
+                      label={{ value: 'Time (Normalized)', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                      padding={{ left: 10, right: 10 }}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.toFixed(2)}
+                    />
+                    <YAxis
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                      name="NAV"
+                      label={{ value: 'NAV', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-  <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-    <h3 className={`text-base ali font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-      LTV Risk Distribution
-    </h3>
-    <div className="h-48 sm:h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={results.ltv.ltv_distribution}
-          margin={{ top: 10, right: 30, left: 30, bottom: 30 }} // Adjusted left margin for more Y-axis space
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-          <XAxis
-            dataKey="ltv"
-            stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            name="LTV Ratio"
-            label={{ value: 'LTV Ratio', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
-            padding={{ left: 10, right: 10 }}
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => parseFloat(value).toFixed(2)}
-          />
-          <YAxis
-            stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            name="Frequency"
-            label={{ value: 'Frequency', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }} // Increased offset to -20
-            tick={{ fontSize: 12 }} // Added smaller font size for consistency
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-              border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-              borderRadius: '8px'
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="frequency"
-            stroke="#10b981"
-            fill="#10b981"
-            fillOpacity={0.3}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-</div>
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                LTV Risk Distribution
+              </h3>
+              <div className="h-48 sm:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={results.ltv.ltv_distribution}
+                    margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <XAxis
+                      dataKey="ltv"
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                      name="LTV Ratio"
+                      label={{ value: 'LTV Ratio', position: 'insideBottom', offset: -15, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                      padding={{ left: 10, right: 10 }}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => parseFloat(value).toFixed(2)}
+                    />
+                    <YAxis
+                      stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                      name="Frequency"
+                      label={{ value: 'Frequency', angle: -90, position: 'insideLeft', offset: -20, fill: darkMode ? '#9ca3af' : '#6b7280' }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="frequency"
+                      stroke="#10b981"
+                      fill="#10b981"
+                      fillOpacity={0.3}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
 
-<div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-8`}>
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-8`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Scenario Comparison
             </h3>
@@ -924,18 +1031,18 @@ const App = () => {
                       angle: -90,
                       position: 'insideLeft',
                       offset: 10,
-                      fill: darkMode ? '#9ca3af' : '#6b7280'
+                      fill: darkMode ? '#9ca3af' : '#6b7280',
                     }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                       border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
+                      borderRadius: '8px',
                     }}
                     formatter={(value, name) => [
                       selectedMetric === 'nav' ? value.toFixed(2) : (value * 100).toFixed(1) + '%',
-                      name
+                      name,
                     ]}
                   />
                   <Legend />
@@ -956,7 +1063,7 @@ const App = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-</div>
+          </div>
         </div>
 
         {bespokePanelOpen && (
@@ -1059,8 +1166,7 @@ const App = () => {
                       handleExport('csv', '/api/what_if/', selectedParam, paramValue);
                     }}
                     disabled={isExportLoading || isWhatIfLoading}
-                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-                      }`}
+                    className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                   >
                     {isExportLoading && exportType === 'CSV' ? (
                       <>
@@ -1075,14 +1181,13 @@ const App = () => {
                     onClick={() => {
                       if (!selectedParam || !paramValue) {
                         setError('Please select a parameter and enter a valid value.');
-                        return;
+                                               return;
                       }
                       if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
                       handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
                     }}
                     disabled={isExportLoading || isWhatIfLoading}
-                    className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-                      }`}
+                    className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                   >
                     {isExportLoading && exportType === 'PDF' ? (
                       <>
@@ -1113,6 +1218,9 @@ const App = () => {
       </div>
     );
   };
+
+  // State for results (was missing in the provided code)
+  const [results, setResults] = useState(null);
 
   // Render based on current page
   if (currentPage === 'landing') return <LandingPage />;
