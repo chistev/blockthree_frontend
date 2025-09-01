@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 
 const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "", darkMode }) => {
   const [localValue, setLocalValue] = useState(value.toString());
+  const [sliderValue, setSliderValue] = useState(value);
 
-  useEffect(() => setLocalValue(value.toString()), [value]);
+  useEffect(() => {
+    setLocalValue(value.toString());
+    setSliderValue(value);
+  }, [value]);
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -16,25 +20,36 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
   const handleInputBlur = () => {
     let parsed = parseFloat(localValue);
     if (isNaN(parsed)) {
-      parsed = min;
-    } else if (suffix === "%") {
-      parsed = parsed / 100;
+      parsed = value; // Revert to current value if invalid
     }
-    // Allow 0 for percentage-based inputs if min is 0
-    const clamped = Math.max(min, Math.min(max, parsed));
-    setLocalValue(clamped.toString());
-    onChange(clamped);
+    
+    // Update both the value and slider
+    onChange(parsed);
+    setSliderValue(Math.max(min, Math.min(max, parsed))); // Constrain slider to min/max
   };
 
   const handleSliderChange = (val) => {
-    setLocalValue(val.toString());
-    onChange(val);
+    const newValue = parseFloat(val);
+    setSliderValue(newValue);
+    setLocalValue(newValue.toString());
+    onChange(newValue);
   };
 
-  const displayValue = parseFloat(localValue);
-  const formattedValue = isNaN(displayValue)
-    ? (suffix === "%" ? (min * 100).toFixed(1) : min.toFixed(step >= 1 ? 0 : 2))
-    : (suffix === "%" ? (displayValue * 100).toFixed(1) : displayValue.toFixed(step >= 1 ? 0 : 2));
+  // Format display value based on suffix
+  const formatDisplayValue = (val) => {
+    if (suffix === "%") {
+      return (val * 100).toFixed(1);
+    }
+    return val.toFixed(step >= 1 ? 0 : 2);
+  };
+
+  // Format slider bounds for display
+  const formatBoundValue = (val) => {
+    if (suffix === "%") {
+      return (val * 100).toFixed(1);
+    }
+    return val;
+  };
 
   return (
     <div className="mb-6">
@@ -44,7 +59,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
           {tooltip && <span className="ml-2 text-xs text-gray-500" title={tooltip}>[?]</span>}
         </label>
         <span className={`text-sm font-mono ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-          {formattedValue}{suffix}
+          {formatDisplayValue(value)}{suffix}
         </span>
       </div>
       <div className="relative mb-2">
@@ -68,13 +83,13 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
         min={min}
         max={max}
         step={step}
-        value={isNaN(parseFloat(localValue)) ? min : parseFloat(localValue)}
+        value={sliderValue}
         onChange={(e) => handleSliderChange(parseFloat(e.target.value))}
         className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
       />
       <div className="flex justify-between text-xs text-gray-500 mt-1">
-        <span>{suffix === "%" ? (min * 100).toFixed(1) : min}</span>
-        <span>{suffix === "%" ? (max * 100).toFixed(1) : max}</span>
+        <span>{formatBoundValue(min)}</span>
+        <span>{formatBoundValue(max)}</span>
       </div>
     </div>
   );

@@ -588,20 +588,20 @@ const App = () => {
                 Model Parameters
               </h3>
               {[
-                { label: "Expected Drift (μ)", key: "mu", min: 0.35, max: 0.50, step: 0.01 },
-                { label: "Volatility (σ)", key: "sigma", min: 0.50, max: 0.80, step: 0.01 },
-                { label: "Time Horizon", key: "t", min: 0.25, max: 2.0, step: 0.25, suffix: " years" },
-                { label: "Delta", key: "delta", min: 0.05, max: 0.15, step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
-                { label: "Expected BTC Return", key: "expected_return_btc", min: 0.1, max: 0.6, step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
-                { label: "Risk-Free Rate", key: "risk_free_rate", min: 0.01, max: 0.06, step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
-              ].map(({ label, key, min, max, step, suffix, tooltip }) => (
+                { label: "Expected Drift (μ)", key: "mu", step: 0.01, tooltip: "Expected price appreciation rate of BTC" },
+                { label: "Volatility (σ)", key: "sigma", step: 0.01, tooltip: "Standard deviation of BTC returns" },
+                { label: "Time Horizon", key: "t", step: 0.25, suffix: " years", tooltip: "Investment time horizon" },
+                { label: "Delta", key: "delta", step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
+                { label: "Expected BTC Return", key: "expected_return_btc", step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
+                { label: "Risk-Free Rate", key: "risk_free_rate", step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
+              ].map(({ label, key, step, suffix, tooltip }) => (
                 <HybridInput
                   key={key}
                   label={label}
                   value={assumptions[key]}
                   onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                  min={min}
-                  max={max}
+                  min={0}
+                  max={key === "t" ? 5 : 1} // Reasonable defaults but input can exceed these
                   step={step}
                   suffix={suffix}
                   tooltip={tooltip}
@@ -677,21 +677,21 @@ const App = () => {
                 Advanced Parameters
               </h3>
               {[
-                { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
-                { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", min: 0.3, max: 0.7, step: 0.01, tooltip: "Speed of mean reversion for volatility" },
-                { label: "Long-Run Volatility", key: "long_run_volatility", min: 0, max: 0.7, step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
-                { label: "Paths", key: "paths", min: 1000, max: 20000, step: 1000, tooltip: "Number of simulation paths" },
-                { label: "Jump Intensity", key: "jump_intensity", min: 0.05, max: 0.2, step: 0.01, tooltip: "Intensity of jumps in BTC price" },
-                { label: "Jump Mean", key: "jump_mean", min: -0.1, max: 0.1, step: 0.01, tooltip: "Mean of jumps in BTC price" },
-                { label: "Jump Volatility", key: "jump_volatility", min: 0, max: 0.3, step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
-              ].map(({ label, key, min, max, step, suffix, tooltip }) => (
+                { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
+                { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", step: 0.01, tooltip: "Speed of mean reversion for volatility" },
+                { label: "Long-Run Volatility", key: "long_run_volatility", step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
+                { label: "Paths", key: "paths", step: 1000, tooltip: "Number of simulation paths" },
+                { label: "Jump Intensity", key: "jump_intensity", step: 0.01, tooltip: "Intensity of jumps in BTC price" },
+                { label: "Jump Mean", key: "jump_mean", step: 0.01, tooltip: "Mean of jumps in BTC price" },
+                { label: "Jump Volatility", key: "jump_volatility", step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
+              ].map(({ label, key, step, suffix, tooltip }) => (
                 <HybridInput
                   key={key}
                   label={label}
                   value={assumptions[key]}
                   onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                  min={min}
-                  max={max}
+                  min={0}
+                  max={key === "paths" ? 50000 : 1} // Higher max for paths
                   step={step}
                   suffix={suffix}
                   tooltip={tooltip}
