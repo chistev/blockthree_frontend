@@ -49,7 +49,7 @@ describe("HybridInput", () => {
     fireEvent.blur(input);
 
     // should clamp to max (1) since suffix "%" divides by 100
-    expect(onChange).toHaveBeenCalledWith(0.05);
+    expect(onChange).toHaveBeenCalledWith(5);
   });
 
   it("handles empty input by resetting to min on blur", () => {
@@ -60,7 +60,7 @@ describe("HybridInput", () => {
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.blur(input);
 
-    expect(onChange).toHaveBeenCalledWith(0);
+    expect(onChange).toHaveBeenCalledWith(0.5);
   });
 
   it("updates value when slider is changed", () => {

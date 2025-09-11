@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import HybridInput from './components/HybridInput';
 import InputField from './components/InputField';
 import DocumentationModal from './components/DocumentationModal';
+import { mapResults } from './components/mapResults'
 import './index.css';
 import {
   TrendingDown,
@@ -94,7 +95,7 @@ const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "
 // API Utilities (unchanged)
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
-    const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/', {
+    const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -116,64 +117,6 @@ const fetchBTCPrice = async (setAssumptions, setError) => {
     }));
   }
 };
-
-const processLTVPaths = (ltv_paths) => {
-  const min_ltv = Math.min(...ltv_paths);
-  const max_ltv = Math.max(...ltv_paths);
-  const num_bins = 20;
-  const bin_width = (max_ltv - min_ltv) / num_bins;
-  const bins = Array(num_bins).fill(0);
-
-  ltv_paths.forEach(ltv => {
-    const bin_index = Math.min(Math.floor((ltv - min_ltv) / bin_width), num_bins - 1);
-    bins[bin_index]++;
-  });
-
-  return bins.map((frequency, index) => ({
-    ltv: (min_ltv + index * bin_width + bin_width / 2).toFixed(2),
-    frequency,
-  }));
-};
-
-const mapResults = (backendResults, btc_treasury, btc_current_market_price) => ({
-  nav: {
-    avg_nav: backendResults.nav.avg_nav,
-    ci_lower: backendResults.nav.ci_lower,
-    ci_upper: backendResults.nav.ci_upper,
-    erosion_prob: backendResults.nav.erosion_prob,
-    nav_paths: backendResults.nav.nav_paths.map((value, index) => ({
-      time: index / 100,
-      value,
-    })),
-  },
-  dilution: {
-    base_dilution: backendResults.dilution.base_dilution,
-    avg_dilution: backendResults.dilution.avg_dilution,
-    structure_threshold_breached: backendResults.dilution.structure_threshold_breached,
-  },
-  ltv: {
-    avg_ltv: backendResults.ltv.avg_ltv,
-    exceed_prob: backendResults.ltv.exceed_prob,
-    ltv_distribution: processLTVPaths(backendResults.ltv.ltv_paths),
-  },
-  roe: {
-    avg_roe: backendResults.roe.avg_roe,
-  },
-  preferred_bundle: {
-    bundle_value: backendResults.preferred_bundle.bundle_value,
-  },
-  btc_portfolio_value: btc_treasury * btc_current_market_price,
-  target_metrics: {
-    target_nav: backendResults.target_metrics.target_nav,
-    target_ltv: backendResults.target_metrics.target_ltv,
-    target_convertible_value: backendResults.target_metrics.target_convertible_value,
-    target_roe: backendResults.target_metrics.target_roe,
-    target_bundle_value: backendResults.target_metrics.target_bundle_value,
-  },
-  scenario_metrics: backendResults.scenario_metrics,
-  distribution_metrics: backendResults.distribution_metrics,
-  optimized_param: backendResults.optimized_param || null,
-});
 
 const validateWhatIfInput = (param, value, setError) => {
   if (['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'initial_equity_value', 'IssuePrice', 'LoanPrincipal'].includes(param) && value <= 0) {
@@ -305,7 +248,7 @@ const App = () => {
 
   const handleAPIRequest = async (endpoint, body, setLoading, errorMessage) => {
     try {
-      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -381,7 +324,7 @@ const App = () => {
         body.param = param;
         body.value = value;
       }
-      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
+      const response = await fetch(`http://127.0.0.1:8000/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
