@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import HybridInput from './components/HybridInput';
 import InputField from './components/InputField';
 import DocumentationModal from './components/DocumentationModal';
-import { mapResults } from './components/mapResults'
+import { mapResults } from './components/mapResults';
 import './index.css';
 import {
   TrendingDown,
@@ -92,7 +92,7 @@ const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "
   </div>
 );
 
-// API Utilities (unchanged)
+// API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
     const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
@@ -169,7 +169,7 @@ const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
   return paths;
 };
 
-// New functions for saving and loading configurations
+// Configuration Utilities
 const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
   if (!configName.trim()) {
     setError('Configuration name cannot be empty');
@@ -227,6 +227,11 @@ const getSavedConfigurations = () => {
 const App = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
+  const [mode, setMode] = useState('default'); // New: 'default' or 'sec'
+  const [secAssumptions, setSecAssumptions] = useState({}); // New: SEC-derived data
+  const [ticker, setTicker] = useState(''); // New: Ticker input
+  const [uploadedFile, setUploadedFile] = useState(null); // New: File upload
+  const [parsedSecData, setParsedSecData] = useState(null); // New: Parsed SEC data
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState(0);
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
@@ -239,7 +244,6 @@ const App = () => {
   const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
   const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
-  // New state for saved configurations
   const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
 
   useEffect(() => {
@@ -275,9 +279,13 @@ const App = () => {
     }, 200);
 
     try {
+      const body = { assumptions, format: 'json', use_live: true };
+      if (mode === 'sec') {
+        body.secAssumptions = secAssumptions;
+      }
       const backendResults = await handleAPIRequest(
         '/api/calculate/',
-        { assumptions, format: 'json', use_live: true },
+        body,
         setIsCalculating,
         'Failed to run models. Please try again.'
       );
@@ -324,7 +332,7 @@ const App = () => {
         body.param = param;
         body.value = value;
       }
-      const response = await fetch(`http://127.0.0.1:8000/${endpoint}`, {
+      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -351,7 +359,6 @@ const App = () => {
     }
   };
 
-  // Page Components
   const LandingPage = () => (
     <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} px-4 sm:px-8`}>
       <div className="text-center max-w-4xl mx-auto">
@@ -376,12 +383,13 @@ const App = () => {
   );
 
   const AssumptionsPage = () => {
-    // Move configuration state to the component to prevent re-renders
     const [configName, setConfigName] = useState('');
     const [selectedConfig, setSelectedConfig] = useState('');
     const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
+    const [ticker, setTicker] = useState(''); // New: Ticker input for SEC mode
+    const [uploadedFile, setUploadedFile] = useState(null); // New: File upload for SEC mode
+    const [parsedSecData, setParsedSecData] = useState(null); // New: Parsed SEC data
 
-    // Update parent's savedConfigs when localSavedConfigs changes
     useEffect(() => {
       setSavedConfigs(localSavedConfigs);
     }, [localSavedConfigs]);
@@ -401,6 +409,50 @@ const App = () => {
         setSelectedConfig('');
       }
     }, [selectedConfig]);
+
+    const fetchSECData = async (ticker) => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/sec_fetch/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setParsedSecData(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch SEC data:', err);
+        setError('Failed to fetch SEC data. Please check the ticker and try again.');
+      }
+    };
+
+    const handleFileUpload = async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/sec_parse/', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setParsedSecData(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to parse uploaded file:', err);
+        setError('Failed to parse uploaded file. Please try again.');
+      }
+    };
+
+    const applySecData = (parsedData) => {
+      setSecAssumptions({
+        sec_initial_equity_value: parsedData.total_equity || assumptions.initial_equity_value,
+        sec_loan_principal: parsedData.total_debt || assumptions.LoanPrincipal,
+        sec_cash_reserves: parsedData.cash_reserves || 0,
+      });
+      setParsedSecData(null);
+    };
 
     return (
       <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
@@ -424,15 +476,113 @@ const App = () => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
-            >
-              {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
-            </button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  {mode === 'default' ? 'Default Mode' : 'Public/SEC Mode'}
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={mode === 'sec'}
+                    onChange={() => setMode(mode === 'default' ? 'sec' : 'default')}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-500 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
+              >
+                {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
+              </button>
+            </div>
           </div>
 
-          {/* New Configuration Management Section */}
+          {mode === 'sec' && (
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                SEC Data Ingestion
+              </h3>
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <input
+                  type="text"
+                  value={ticker}
+                  onChange={(e) => setTicker(e.target.value)}
+                  placeholder="Enter ticker symbol (e.g., AAPL)"
+                  className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
+                />
+                <button
+                  onClick={() => fetchSECData(ticker)}
+                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!ticker.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!ticker.trim()}
+                >
+                  Fetch 10-K/10-Q
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                <input
+                  type="file"
+                  accept=".ixbrl,.pdf"
+                  onChange={(e) => setUploadedFile(e.target.files[0])}
+                  className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
+                />
+                <button
+                  onClick={() => handleFileUpload(uploadedFile)}
+                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!uploadedFile ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!uploadedFile}
+                >
+                  Upload & Parse
+                </button>
+              </div>
+              {parsedSecData && (
+                <div className="mt-4">
+                  <h4 className={`text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Parsed SEC Data
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {Object.entries(parsedSecData).map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm">
+                        <span>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</span>
+                        <span>{value.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => applySecData(parsedSecData)}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  >
+                    Apply SEC Data
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {Object.keys(secAssumptions).length > 0 && (
+            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                SEC-Derived Parameters
+              </h3>
+              {Object.entries(secAssumptions).map(([key, value]) => (
+                <InputField
+                  key={key}
+                  label={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  value={value}
+                  onChange={(val) => {
+                    const numVal = parseFloat(val);
+                    if (!isNaN(numVal) && numVal >= 0) {
+                      setSecAssumptions({ ...secAssumptions, [key]: numVal });
+                    }
+                  }}
+                  suffix="USD"
+                  darkMode={darkMode}
+                />
+              ))}
+            </div>
+          )}
+
           <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Saved Configurations
@@ -544,7 +694,7 @@ const App = () => {
                   value={assumptions[key]}
                   onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
                   min={0}
-                  max={key === "t" ? 5 : 1} // Reasonable defaults but input can exceed these
+                  max={key === "t" ? 5 : 1}
                   step={step}
                   suffix={suffix}
                   tooltip={tooltip}
@@ -634,7 +784,7 @@ const App = () => {
                   value={assumptions[key]}
                   onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
                   min={0}
-                  max={key === "paths" ? 50000 : 1} // Higher max for paths
+                  max={key === "paths" ? 50000 : 1}
                   step={step}
                   suffix={suffix}
                   tooltip={tooltip}
@@ -1189,7 +1339,6 @@ const App = () => {
     );
   };
 
-  // Render based on current page
   if (currentPage === 'landing') return <LandingPage />;
   if (currentPage === 'assumptions') return <AssumptionsPage />;
   if (currentPage === 'dashboard' && results) return <DashboardPage />;
