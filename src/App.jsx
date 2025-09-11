@@ -37,7 +37,6 @@ import {
   Legend,
 } from 'recharts';
 
-// Constants for default assumptions (unchanged)
 const DEFAULT_ASSUMPTIONS = {
   BTC_treasury: 1000,
   BTC_purchased: 0,
@@ -65,7 +64,6 @@ const DEFAULT_ASSUMPTIONS = {
   jump_volatility: 0.2,
 };
 
-// MetricCard component (unchanged)
 const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
   <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} transition-all hover:shadow-lg relative group`}>
     <div className="flex items-center justify-between mb-3">
@@ -386,9 +384,10 @@ const App = () => {
     const [configName, setConfigName] = useState('');
     const [selectedConfig, setSelectedConfig] = useState('');
     const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
-    const [ticker, setTicker] = useState(''); // New: Ticker input for SEC mode
-    const [uploadedFile, setUploadedFile] = useState(null); // New: File upload for SEC mode
-    const [parsedSecData, setParsedSecData] = useState(null); // New: Parsed SEC data
+    const [ticker, setTicker] = useState('');
+    const [uploadedFile, setUploadedFile] = useState(null);
+    const [parsedSecData, setParsedSecData] = useState(null);
+    const [isFetchingSECData, setIsFetchingSECData] = useState(false); // New state for fetch loading
 
     useEffect(() => {
       setSavedConfigs(localSavedConfigs);
@@ -411,6 +410,7 @@ const App = () => {
     }, [selectedConfig]);
 
     const fetchSECData = async (ticker) => {
+      setIsFetchingSECData(true); // Set loading state to true
       try {
         const response = await fetch('http://127.0.0.1:8000/api/sec_fetch/', {
           method: 'POST',
@@ -424,6 +424,8 @@ const App = () => {
       } catch (err) {
         console.error('Failed to fetch SEC data:', err);
         setError('Failed to fetch SEC data. Please check the ticker and try again.');
+      } finally {
+        setIsFetchingSECData(false); // Reset loading state
       }
     };
 
@@ -447,9 +449,9 @@ const App = () => {
 
     const applySecData = (parsedData) => {
       setSecAssumptions({
-        sec_initial_equity_value: parsedData.total_equity || assumptions.initial_equity_value,
-        sec_loan_principal: parsedData.total_debt || assumptions.LoanPrincipal,
-        sec_cash_reserves: parsedData.cash_reserves || 0,
+        sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
+        sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
+        sec_cash_reserves: parsedData.cash_reserves != null ? parsedData.cash_reserves : 0,
       });
       setParsedSecData(null);
     };
@@ -515,10 +517,18 @@ const App = () => {
                 />
                 <button
                   onClick={() => fetchSECData(ticker)}
-                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!ticker.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={!ticker.trim()}
+                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center ${!ticker.trim() || isFetchingSECData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
+                    }`}
+                  disabled={!ticker.trim() || isFetchingSECData}
                 >
-                  Fetch 10-K/10-Q
+                  {isFetchingSECData ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      Fetching...
+                    </>
+                  ) : (
+                    'Fetch 10-K/10-Q'
+                  )}
                 </button>
               </div>
               <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -545,7 +555,7 @@ const App = () => {
                     {Object.entries(parsedSecData).map(([key, value]) => (
                       <div key={key} className="flex justify-between text-sm">
                         <span>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</span>
-                        <span>{value.toLocaleString()}</span>
+                        <span>{value != null ? value.toLocaleString() : 'N/A'}</span>
                       </div>
                     ))}
                   </div>
