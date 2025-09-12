@@ -13,6 +13,7 @@ import {
   Target,
   AlertTriangle,
   Moon,
+  Info,
   Sun,
   Briefcase,
   Play,
