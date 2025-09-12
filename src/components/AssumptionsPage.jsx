@@ -31,22 +31,51 @@ const AssumptionsPage = ({
   error,
   setError,
   savedConfigs,
-  setSavedConfigs
+  setSavedConfigs,
+  ticker,
+  setTicker,
+  uploadedFile,
+  setUploadedFile,
+  parsedSecData,
+  setParsedSecData,
+  privateFile,
+  setPrivateFile,
+  parsedPrivateData,
+  setParsedPrivateData,
+  isParsingPrivateFile,
+  handlePrivateFileUpload,
+  applyPrivateData,
 }) => {
   const [configName, setConfigName] = useState('');
   const [selectedConfig, setSelectedConfig] = useState('');
   const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
-  const [ticker, setTicker] = useState('');
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [parsedSecData, setParsedSecData] = useState(null);
   const [isFetchingSECData, setIsFetchingSECData] = useState(false);
-  const [privateFile, setPrivateFile] = useState(null);
-  const [parsedPrivateData, setParsedPrivateData] = useState(null);
-  const [isParsingPrivateFile, setIsParsingPrivateFile] = useState(false);
+  // New state for net-new mode fields
+  const [netNewAssumptions, setNetNewAssumptions] = useState({
+    starting_equity: assumptions.initial_equity_value || 90000000,
+    btc_allocation_pct: 0.1, // Default 10%
+    opex_per_month: 100000, // Default $100,000
+    planned_debt_capacity: assumptions.LoanPrincipal || 25000000,
+    initial_share_count: 1000000, // Default 1M shares
+  });
 
   useEffect(() => {
     setSavedConfigs(localSavedConfigs);
   }, [localSavedConfigs, setSavedConfigs]);
+
+  // Update assumptions when net-new fields change
+  useEffect(() => {
+    if (mode === 'net-new') {
+      setAssumptions((prev) => ({
+        ...prev,
+        initial_equity_value: netNewAssumptions.starting_equity,
+        LoanPrincipal: netNewAssumptions.planned_debt_capacity,
+        // Calculate BTC_treasury based on allocation percentage
+        BTC_treasury: (netNewAssumptions.starting_equity * netNewAssumptions.btc_allocation_pct) /
+          (prev.BTC_current_market_price || 117000),
+      }));
+    }
+  }, [netNewAssumptions, mode, setAssumptions]);
 
   const handleSaveConfiguration = useCallback((name) => {
     const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
@@ -147,31 +176,6 @@ const AssumptionsPage = ({
     }
   };
 
-  const handlePrivateFileUpload = async (file) => {
-    if (!file) {
-      setError('No file selected');
-      return;
-    }
-    setIsParsingPrivateFile(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch('http://127.0.0.1:8000/api/private_parse/', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      setParsedPrivateData(data);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to parse private company file:', err);
-      setError('Failed to parse uploaded file. Please ensure it is a valid CSV/Excel file.');
-    } finally {
-      setIsParsingPrivateFile(false);
-    }
-  };
-
   const applySecData = (parsedData) => {
     setSecAssumptions({
       sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
@@ -181,7 +185,7 @@ const AssumptionsPage = ({
     setParsedSecData(null);
   };
 
-  const applyPrivateData = (parsedData) => {
+  const handleApplyPrivateData = (parsedData) => {
     setSecAssumptions({
       sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
       sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
@@ -236,6 +240,12 @@ const AssumptionsPage = ({
                 >
                   Private Company
                 </button>
+                <button
+                  onClick={() => setMode('net-new')}
+                  className={`px-3 py-1 rounded-lg text-sm ${mode === 'net-new' ? 'bg-blue-600 text-white' : darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'}`}
+                >
+                  Net-New / Pro-Forma
+                </button>
               </div>
             </div>
             <button
@@ -246,6 +256,56 @@ const AssumptionsPage = ({
             </button>
           </div>
         </div>
+
+        {mode === 'net-new' && (
+          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Net-New / Pro-Forma Parameters
+            </h3>
+            <InputField
+              label="Starting Equity"
+              value={netNewAssumptions.starting_equity}
+              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, starting_equity: val })}
+              suffix="USD"
+              tooltip="Total equity value at the start of the pro-forma analysis"
+              darkMode={darkMode}
+            />
+            <HybridInput
+              label="Intended BTC Allocation"
+              value={netNewAssumptions.btc_allocation_pct}
+              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, btc_allocation_pct: val })}
+              min={0}
+              max={1}
+              step={0.01}
+              suffix="%"
+              tooltip="Percentage of starting equity to allocate to BTC treasury"
+              darkMode={darkMode}
+            />
+            <InputField
+              label="Opex per Month"
+              value={netNewAssumptions.opex_per_month}
+              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, opex_per_month: val })}
+              suffix="USD"
+              tooltip="Monthly operational expenditure"
+              darkMode={darkMode}
+            />
+            <InputField
+              label="Planned Debt Capacity"
+              value={netNewAssumptions.planned_debt_capacity}
+              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, planned_debt_capacity: val })}
+              suffix="USD"
+              tooltip="Maximum debt the company plans to take on"
+              darkMode={darkMode}
+            />
+            <InputField
+              label="Initial Share Count"
+              value={netNewAssumptions.initial_share_count}
+              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, initial_share_count: val })}
+              tooltip="Number of shares outstanding at the start"
+              darkMode={darkMode}
+            />
+          </div>
+        )}
 
         {mode === 'sec' && (
           <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>

@@ -202,7 +202,7 @@ const getSavedConfigurations = () => {
 const App = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
-  const [mode, setMode] = useState('default'); // 'default', 'sec', or 'private'
+  const [mode, setMode] = useState('default');
   const [secAssumptions, setSecAssumptions] = useState({});
   const [ticker, setTicker] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
