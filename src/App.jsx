@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import HybridInput from './components/HybridInput';
 import InputField from './components/InputField';
 import DocumentationModal from './components/DocumentationModal';
+import AssumptionsPage from './components/AssumptionsPage';
 import { mapResults } from './components/mapResults';
-import { handleExport } from './utils/handleExport'
+import { handleExport, validateWhatIfInput } from './utils/handleExport';
 import './index.css';
 import {
   TrendingDown,
-  Calculator,
   Shield,
   DollarSign,
   Target,
@@ -20,10 +20,6 @@ import {
   Home,
   Download,
   FileText,
-  Info,
-  Save,
-  Folder,
-  Trash2,
 } from 'lucide-react';
 import {
   LineChart,
@@ -206,11 +202,14 @@ const getSavedConfigurations = () => {
 const App = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
-  const [mode, setMode] = useState('default'); // New: 'default' or 'sec'
-  const [secAssumptions, setSecAssumptions] = useState({}); // New: SEC-derived data
-  const [ticker, setTicker] = useState(''); // New: Ticker input
-  const [uploadedFile, setUploadedFile] = useState(null); // New: File upload
-  const [parsedSecData, setParsedSecData] = useState(null); // New: Parsed SEC data
+  const [mode, setMode] = useState('default'); // 'default', 'sec', or 'private'
+  const [secAssumptions, setSecAssumptions] = useState({});
+  const [ticker, setTicker] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [parsedSecData, setParsedSecData] = useState(null);
+  const [privateFile, setPrivateFile] = useState(null);
+  const [parsedPrivateData, setParsedPrivateData] = useState(null);
+  const [isParsingPrivateFile, setIsParsingPrivateFile] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState(0);
   const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
@@ -254,12 +253,12 @@ const App = () => {
     setError(null);
 
     const progressInterval = setInterval(() => {
-      setCalculationProgress(prev => Math.min(prev + 10, 90));
+      setCalculationProgress((prev) => Math.min(prev + 10, 90));
     }, 200);
 
     try {
       const body = { assumptions, format: 'json', use_live: true };
-      if (mode === 'sec') {
+      if (mode === 'sec' || mode === 'private') {
         body.secAssumptions = secAssumptions;
       }
       const backendResults = await handleAPIRequest(
@@ -298,6 +297,36 @@ const App = () => {
     }
   };
 
+  const handlePrivateFileUpload = async (file) => {
+    setIsParsingPrivateFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/private_parse/', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setParsedPrivateData(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to parse private file:', err);
+      setError('Failed to parse private file. Please try again.');
+    } finally {
+      setIsParsingPrivateFile(false);
+    }
+  };
+
+  const applyPrivateData = (parsedData) => {
+    setSecAssumptions({
+      sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
+      sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
+      sec_cash_reserves: parsedData.cash_reserves != null ? parsedData.cash_reserves : 0,
+    });
+    setParsedPrivateData(null);
+  };
+
   const LandingPage = () => (
     <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} px-4 sm:px-8`}>
       <div className="text-center max-w-4xl mx-auto">
@@ -320,473 +349,6 @@ const App = () => {
       </div>
     </div>
   );
-
-  const AssumptionsPage = () => {
-    const [configName, setConfigName] = useState('');
-    const [selectedConfig, setSelectedConfig] = useState('');
-    const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
-    const [ticker, setTicker] = useState('');
-    const [uploadedFile, setUploadedFile] = useState(null);
-    const [parsedSecData, setParsedSecData] = useState(null);
-    const [isFetchingSECData, setIsFetchingSECData] = useState(false); // New state for fetch loading
-
-    useEffect(() => {
-      setSavedConfigs(localSavedConfigs);
-    }, [localSavedConfigs]);
-
-    const handleSaveConfiguration = useCallback((name) => {
-      saveConfiguration(assumptions, name, setLocalSavedConfigs, setError);
-      setConfigName('');
-    }, [assumptions]);
-
-    const handleLoadConfiguration = useCallback((name) => {
-      loadConfiguration(name, setAssumptions, setError);
-    }, []);
-
-    const handleDeleteConfiguration = useCallback((name) => {
-      deleteConfiguration(name, setLocalSavedConfigs, setError);
-      if (selectedConfig === name) {
-        setSelectedConfig('');
-      }
-    }, [selectedConfig]);
-
-    const fetchSECData = async (ticker) => {
-      setIsFetchingSECData(true); // Set loading state to true
-      try {
-        const response = await fetch('http://127.0.0.1:8000/api/sec_fetch/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ticker }),
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setParsedSecData(data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch SEC data:', err);
-        setError('Failed to fetch SEC data. Please check the ticker and try again.');
-      } finally {
-        setIsFetchingSECData(false); // Reset loading state
-      }
-    };
-
-    const handleFileUpload = async (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        const response = await fetch('http://127.0.0.1:8000/api/sec_parse/', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        setParsedSecData(data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to parse uploaded file:', err);
-        setError('Failed to parse uploaded file. Please try again.');
-      }
-    };
-
-    const applySecData = (parsedData) => {
-      setSecAssumptions({
-        sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
-        sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
-        sec_cash_reserves: parsedData.cash_reserves != null ? parsedData.cash_reserves : 0,
-      });
-      setParsedSecData(null);
-    };
-
-    return (
-      <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-gray-50'} p-4 sm:p-8`}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-            <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-              <button
-                onClick={() => setCurrentPage('landing')}
-                className={`p-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                title="Back to Home"
-              >
-                <Home className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-                Home
-              </button>
-              <div>
-                <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Model Assumptions
-                </h1>
-                <p className={`${darkMode ? 'text-slate-400' : 'text-gray-600'} mt-2 text-sm sm:text-base`}>
-                  Configure parameters for risk analysis and treasury optimization
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <span className={`text-sm ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                  {mode === 'default' ? 'Default Mode' : 'Public/SEC Mode'}
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={mode === 'sec'}
-                    onChange={() => setMode(mode === 'default' ? 'sec' : 'default')}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-500 peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-600'}`}
-              >
-                {darkMode ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {mode === 'sec' && (
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                SEC Data Ingestion
-              </h3>
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <input
-                  type="text"
-                  value={ticker}
-                  onChange={(e) => setTicker(e.target.value)}
-                  placeholder="Enter ticker symbol (e.g., AAPL)"
-                  className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
-                />
-                <button
-                  onClick={() => fetchSECData(ticker)}
-                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center ${!ticker.trim() || isFetchingSECData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
-                    }`}
-                  disabled={!ticker.trim() || isFetchingSECData}
-                >
-                  {isFetchingSECData ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                      Fetching...
-                    </>
-                  ) : (
-                    'Fetch 10-K/10-Q'
-                  )}
-                </button>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <input
-                  type="file"
-                  accept=".ixbrl,.pdf"
-                  onChange={(e) => setUploadedFile(e.target.files[0])}
-                  className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
-                />
-                <button
-                  onClick={() => handleFileUpload(uploadedFile)}
-                  className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!uploadedFile ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={!uploadedFile}
-                >
-                  Upload & Parse
-                </button>
-              </div>
-              {parsedSecData && (
-                <div className="mt-4">
-                  <h4 className={`text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Parsed SEC Data
-                  </h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {Object.entries(parsedSecData).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}:</span>
-                        <span>{value != null ? value.toLocaleString() : 'N/A'}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => applySecData(parsedSecData)}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                  >
-                    Apply SEC Data
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {Object.keys(secAssumptions).length > 0 && (
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                SEC-Derived Parameters
-              </h3>
-              {Object.entries(secAssumptions).map(([key, value]) => (
-                <InputField
-                  key={key}
-                  label={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                  value={value}
-                  onChange={(val) => {
-                    const numVal = parseFloat(val);
-                    if (!isNaN(numVal) && numVal >= 0) {
-                      setSecAssumptions({ ...secAssumptions, [key]: numVal });
-                    }
-                  }}
-                  suffix="USD"
-                  darkMode={darkMode}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
-            <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Saved Configurations
-            </h3>
-            <div className="flex flex-col sm:flex-row gap-4 mb-4">
-              <input
-                type="text"
-                value={configName}
-                onChange={(e) => setConfigName(e.target.value)}
-                placeholder="Enter configuration name"
-                className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
-              />
-              <button
-                onClick={() => handleSaveConfiguration(configName)}
-                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!configName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!configName.trim()}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </button>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <select
-                value={selectedConfig}
-                onChange={(e) => setSelectedConfig(e.target.value)}
-                className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
-              >
-                <option value="">Select a saved configuration</option>
-                {Object.keys(localSavedConfigs).map((name) => (
-                  <option key={name} value={name}>
-                    {name} ({new Date(localSavedConfigs[name].timestamp).toLocaleString()})
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => handleLoadConfiguration(selectedConfig)}
-                className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!selectedConfig}
-              >
-                <Folder className="w-4 h-4 mr-2" />
-                Load
-              </button>
-              <button
-                onClick={() => handleDeleteConfiguration(selectedConfig)}
-                className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm flex items-center ${!selectedConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!selectedConfig}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                BTC Parameters
-              </h3>
-              <InputField
-                label="BTC Treasury (Quantity)"
-                value={assumptions.BTC_treasury}
-                onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
-                suffix="BTC"
-                tooltip="The amount of Bitcoin held in the treasury"
-                darkMode={darkMode}
-              />
-              <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Current BTC Price
-                </label>
-                <div className={`w-full px-3 py-2 rounded-lg border opacity-75 ${darkMode ? 'bg-slate-800 border-slate-600 text-slate-400' : 'bg-gray-200 border-gray-300 text-gray-500'} flex items-center justify-between`}>
-                  <span>{assumptions.BTC_current_market_price ? `$${assumptions.BTC_current_market_price.toFixed(2)}` : 'Loading...'}</span>
-                  <span className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>USD</span>
-                </div>
-              </div>
-              <InputField
-                label="Target BTC Price"
-                value={assumptions.targetBTCPrice}
-                onChange={(val) => setAssumptions({ ...assumptions, targetBTCPrice: val })}
-                suffix="USD"
-                tooltip="Your expected Bitcoin price at the end of the time horizon"
-                darkMode={darkMode}
-              />
-              <InputField
-                label="Issue Price"
-                value={assumptions.IssuePrice}
-                onChange={(val) => setAssumptions({ ...assumptions, IssuePrice: val })}
-                suffix="USD"
-                tooltip="Price at which convertible notes are issued"
-                darkMode={darkMode}
-              />
-            </div>
-
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Model Parameters
-              </h3>
-              {[
-                { label: "Expected Drift (μ)", key: "mu", step: 0.01, tooltip: "Expected price appreciation rate of BTC" },
-                { label: "Volatility (σ)", key: "sigma", step: 0.01, tooltip: "Standard deviation of BTC returns" },
-                { label: "Time Horizon", key: "t", step: 0.25, suffix: " years", tooltip: "Investment time horizon" },
-                { label: "Delta", key: "delta", step: 0.001, suffix: "%", tooltip: "Dividend yield or carry cost" },
-                { label: "Expected BTC Return", key: "expected_return_btc", step: 0.001, suffix: "%", tooltip: "Expected annual return on BTC" },
-                { label: "Risk-Free Rate", key: "risk_free_rate", step: 0.001, suffix: "%", tooltip: "Risk-free interest rate" },
-              ].map(({ label, key, step, suffix, tooltip }) => (
-                <HybridInput
-                  key={key}
-                  label={label}
-                  value={assumptions[key]}
-                  onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                  min={0}
-                  max={key === "t" ? 5 : 1}
-                  step={step}
-                  suffix={suffix}
-                  tooltip={tooltip}
-                  darkMode={darkMode}
-                />
-              ))}
-            </div>
-
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Debt & Equity Parameters
-              </h3>
-              <InputField
-                label="Loan Principal"
-                value={assumptions.LoanPrincipal}
-                onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
-                suffix="USD"
-                tooltip="Principal amount of the loan"
-                darkMode={darkMode}
-              />
-              <HybridInput
-                label="Cost of Debt"
-                value={assumptions.cost_of_debt}
-                onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
-                min={0}
-                max={0.12}
-                step={0.001}
-                suffix="%"
-                tooltip="Interest rate on the loan"
-                darkMode={darkMode}
-              />
-              <HybridInput
-                label="LTV Cap"
-                value={assumptions.LTV_Cap}
-                onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
-                min={0}
-                max={0.90}
-                step={0.001}
-                suffix="%"
-                tooltip="Maximum loan-to-value ratio"
-                darkMode={darkMode}
-              />
-              <InputField
-                label="Initial Equity Value"
-                value={assumptions.initial_equity_value}
-                onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
-                suffix="USD"
-                tooltip="Initial value of equity"
-                darkMode={darkMode}
-              />
-              <InputField
-                label="New Equity Raised"
-                value={assumptions.new_equity_raised}
-                onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
-                suffix="USD"
-                tooltip="Amount of new equity raised"
-                darkMode={darkMode}
-              />
-              <HybridInput
-                label="Beta ROE"
-                value={assumptions.beta_ROE}
-                onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
-                min={1.0}
-                max={3.0}
-                step={0.1}
-                tooltip="Beta for return on equity"
-                darkMode={darkMode}
-              />
-            </div>
-
-            <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Advanced Parameters
-              </h3>
-              {[
-                { label: "Dilution Volatility Estimate", key: "dilution_vol_estimate", step: 0.001, suffix: "%", tooltip: "Volatility estimate for dilution calculation" },
-                { label: "Volatility Mean Reversion Speed", key: "vol_mean_reversion_speed", step: 0.01, tooltip: "Speed of mean reversion for volatility" },
-                { label: "Long-Run Volatility", key: "long_run_volatility", step: 0.001, suffix: "%", tooltip: "Long-term average volatility" },
-                { label: "Paths", key: "paths", step: 1000, tooltip: "Number of simulation paths" },
-                { label: "Jump Intensity", key: "jump_intensity", step: 0.01, tooltip: "Intensity of jumps in BTC price" },
-                { label: "Jump Mean", key: "jump_mean", step: 0.01, tooltip: "Mean of jumps in BTC price" },
-                { label: "Jump Volatility", key: "jump_volatility", step: 0.001, suffix: "%", tooltip: "Volatility of jumps in BTC price" },
-              ].map(({ label, key, step, suffix, tooltip }) => (
-                <HybridInput
-                  key={key}
-                  label={label}
-                  value={assumptions[key]}
-                  onChange={(val) => setAssumptions({ ...assumptions, [key]: val })}
-                  min={0}
-                  max={key === "paths" ? 50000 : 1}
-                  step={step}
-                  suffix={suffix}
-                  tooltip={tooltip}
-                  darkMode={darkMode}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={handleCalculate}
-              disabled={isCalculating || !assumptions.BTC_current_market_price}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
-            >
-              {isCalculating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                  Running Models ({calculationProgress}%)
-                </>
-              ) : (
-                <>
-                  <Calculator className="w-4 h-4 mr-2" />
-                  Run Models
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setIsDocModalOpen(true)}
-              className={`px-4 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            >
-              <Info className="w-4 h-4 mr-1" />
-              Learn More
-            </button>
-          </div>
-          {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
-          {isCalculating && (
-            <div className="mt-6 max-w-md mx-auto">
-              <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
-                <div
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${calculationProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-        </div>
-        <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
-      </div>
-    );
-  };
 
   const DashboardPage = () => {
     const [selectedMetric, setSelectedMetric] = useState('nav');
@@ -840,7 +402,7 @@ const App = () => {
                 Bespoke Mode
               </button>
               <button
-                onClick={() => handleExport('csv')}
+                onClick={() => handleExport('csv', '/api/calculate/', null, null, assumptions, setError, setIsExportLoading, setExportType)}
                 disabled={isExportLoading}
                 className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
               >
@@ -857,7 +419,7 @@ const App = () => {
                 )}
               </button>
               <button
-                onClick={() => handleExport('pdf')}
+                onClick={() => handleExport('pdf', '/api/calculate/', null, null, assumptions, setError, setIsExportLoading, setExportType)}
                 disabled={isExportLoading}
                 className={`px-3 py-2 rounded-lg flex items-center text-sm ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-700'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'}`}
               >
@@ -908,7 +470,7 @@ const App = () => {
                 description: "Raw value of BTC holdings (Treasury × Current Price)",
                 tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price, reflecting the total market value of your Bitcoin holdings.",
                 icon: DollarSign,
-                format: "currency"
+                format: "currency",
               },
               {
                 title: "Structured Product Bundle Value",
@@ -916,7 +478,7 @@ const App = () => {
                 description: "Weighted value of NAV, dilution, and convertible note",
                 tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax), accounting for debt costs and simulated BTC price paths.",
                 icon: Briefcase,
-                format: "currency"
+                format: "currency",
               },
               {
                 title: "NAV Erosion Risk",
@@ -924,7 +486,7 @@ const App = () => {
                 description: "Probability NAV falls below 90% of its average across simulations",
                 tooltip: "The likelihood that the Net Asset Value drops below 90% of its average value across all simulated BTC price paths, indicating potential downside risk.",
                 icon: Shield,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "LTV Exceedance",
@@ -932,7 +494,7 @@ const App = () => {
                 description: "Probability LTV exceeds the cap",
                 tooltip: "The likelihood that the Loan-to-Value ratio exceeds the specified LTV Cap, based on simulated BTC price paths.",
                 icon: AlertTriangle,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "Expected ROE",
@@ -940,15 +502,17 @@ const App = () => {
                 description: "Expected Return on Equity",
                 tooltip: "Calculated using the CAPM model, adjusted for BTC volatility and beta, reflecting the expected return on equity.",
                 icon: Target,
-                format: "percentage"
+                format: "percentage",
               },
               {
                 title: "Dilution Risk",
                 value: results.dilution.base_dilution,
-                description: `Base dilution from new equity raised. Structure: ${results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'}`,
+                description: `Base dilution from new equity raised. Structure: ${
+                  results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'
+                }`,
                 tooltip: "The dilution impact from new equity, adjusted by simulated NAV paths and volatility estimate. Structure chosen based on base dilution threshold (10%).",
                 icon: TrendingDown,
-                format: "percentage"
+                format: "percentage",
               },
             ].map(({ title, value, description, tooltip, icon, format }) => (
               <MetricCard
@@ -995,7 +559,7 @@ const App = () => {
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px'
+                        borderRadius: '8px',
                       }}
                     />
                     <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
@@ -1034,7 +598,7 @@ const App = () => {
                       contentStyle={{
                         backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                         border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                        borderRadius: '8px'
+                        borderRadius: '8px',
                       }}
                     />
                     <Area
@@ -1102,18 +666,18 @@ const App = () => {
                       angle: -90,
                       position: 'insideLeft',
                       offset: 10,
-                      fill: darkMode ? '#9ca3af' : '#6b7280'
+                      fill: darkMode ? '#9ca3af' : '#6b7280',
                     }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                       border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                      borderRadius: '8px'
+                      borderRadius: '8px',
                     }}
                     formatter={(value, name) => [
                       selectedMetric === 'nav' ? value.toFixed(2) : (value * 100).toFixed(1) + '%',
-                      name
+                      name,
                     ]}
                   />
                   <Legend />
@@ -1233,7 +797,7 @@ const App = () => {
                           return;
                         }
                         if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                        handleExport('csv', '/api/what_if/', selectedParam, paramValue);
+                        handleExport('csv', '/api/what_if/', selectedParam, paramValue, assumptions, setError, setIsExportLoading, setExportType);
                       }}
                       disabled={isExportLoading || isWhatIfLoading}
                       className={`w-full mb-3 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
@@ -1254,7 +818,7 @@ const App = () => {
                           return;
                         }
                         if (!validateWhatIfInput(selectedParam, paramValue, setError)) return;
-                        handleExport('pdf', '/api/what_if/', selectedParam, paramValue);
+                        handleExport('pdf', '/api/what_if/', selectedParam, paramValue, assumptions, setError, setIsExportLoading, setExportType);
                       }}
                       disabled={isExportLoading || isWhatIfLoading}
                       className={`w-full px-3 py-2 bg-blue-600 text-white rounded-lg text-sm ${isExportLoading || isWhatIfLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
@@ -1290,10 +854,45 @@ const App = () => {
     );
   };
 
-  if (currentPage === 'landing') return <LandingPage />;
-  if (currentPage === 'assumptions') return <AssumptionsPage />;
-  if (currentPage === 'dashboard' && results) return <DashboardPage />;
-  return null;
+  return (
+    <>
+      {currentPage === 'landing' && <LandingPage />}
+      {currentPage === 'assumptions' && (
+        <AssumptionsPage
+          assumptions={assumptions}
+          setAssumptions={setAssumptions}
+          darkMode={darkMode}
+          setCurrentPage={setCurrentPage}
+          setError={setError}
+          savedConfigs={savedConfigs}
+          setSavedConfigs={setSavedConfigs}
+          mode={mode}
+          setMode={setMode}
+          ticker={ticker}
+          setTicker={setTicker}
+          uploadedFile={uploadedFile}
+          setUploadedFile={setUploadedFile}
+          parsedSecData={parsedSecData}
+          setParsedSecData={setParsedSecData}
+          secAssumptions={secAssumptions}
+          setSecAssumptions={setSecAssumptions}
+          privateFile={privateFile}
+          setPrivateFile={setPrivateFile}
+          parsedPrivateData={parsedPrivateData}
+          setParsedPrivateData={setParsedPrivateData}
+          isParsingPrivateFile={isParsingPrivateFile}
+          handlePrivateFileUpload={handlePrivateFileUpload}
+          applyPrivateData={applyPrivateData}
+          handleCalculate={handleCalculate}
+          isCalculating={isCalculating}
+          calculationProgress={calculationProgress}
+          isDocModalOpen={isDocModalOpen}
+          setIsDocModalOpen={setIsDocModalOpen}
+        />
+      )}
+      {currentPage === 'dashboard' && results && <DashboardPage />}
+    </>
+  );
 };
 
 export default App;
