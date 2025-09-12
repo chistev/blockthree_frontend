@@ -279,6 +279,7 @@ const AssumptionsPage = ({
               <input
                 type="file"
                 accept=".ixbrl,.pdf"
+                aria-label="Upload SEC file"
                 onChange={(e) => setUploadedFile(e.target.files[0])}
                 className={`w-full sm:w-64 px-3 py-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white focus:border-blue-400' : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'} focus:outline-none text-sm`}
               />
