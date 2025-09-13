@@ -35,6 +35,7 @@ import {
   Legend,
 } from 'recharts';
 
+// App.jsx
 const DEFAULT_ASSUMPTIONS = {
   BTC_treasury: 1000,
   BTC_purchased: 0,
@@ -60,13 +61,18 @@ const DEFAULT_ASSUMPTIONS = {
   jump_intensity: 0.1,
   jump_mean: 0.0,
   jump_volatility: 0.2,
-  // New balance sheet fields
-  shares_basic: 1000000, // Basic shares outstanding
-  shares_fd: 1100000, // Fully diluted shares
-  opex_monthly: 100000, // Monthly operating expenses
-  capex_schedule: [], // Array of capital expenditure schedules
-  tax_rate: 0.2, // Effective tax rate
-  nols: 0, // Net operating loss carryforwards
+  shares_basic: 1000000,
+  shares_fd: 1100000,
+  opex_monthly: 100000,
+  capex_schedule: [],
+  tax_rate: 0.2,
+  nols: 0,
+  // New capital routes/capacity fields
+  adv_30d: 1000000, // 30-day average daily volume ($)
+  atm_pct_adv: 0.25, // ATM as % of average daily volume
+  pipe_discount: 0.1, // PIPE discount (e.g., 10%)
+  fees_ecm: 0.03, // ECM fees (e.g., 3%)
+  fees_oid: 0.02, // OID fees (e.g., 2%)
 };
 
 const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
@@ -259,26 +265,42 @@ const App = () => {
     }
   };
 
-  const handlePrivateFileUpload = async (file) => {
-    setIsParsingPrivateFile(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const response = await fetch('http://127.0.0.1:8000/api/private_parse/', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json();
-      setParsedPrivateData(data);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to parse private file:', err);
-      setError('Failed to parse private file. Please try again.');
-    } finally {
-      setIsParsingPrivateFile(false);
-    }
-  };
+  // App.jsx (handlePrivateFileUpload)
+const handlePrivateFileUpload = async (file) => {
+  setIsParsingPrivateFile(true);
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/private_parse/', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    setParsedPrivateData({
+      total_equity: data.total_equity,
+      total_debt: data.total_debt,
+      cash_reserves: data.cash_reserves,
+      shares_basic: data.shares_basic,
+      shares_fd: data.shares_fd,
+      opex_monthly: data.opex_monthly,
+      capex_schedule: data.capex_schedule,
+      tax_rate: data.tax_rate,
+      nols: data.nols,
+      adv_30d: data.adv_30d,
+      atm_pct_adv: data.atm_pct_adv,
+      pipe_discount: data.pipe_discount,
+      fees_ecm: data.fees_ecm,
+      fees_oid: data.fees_oid,
+    });
+    setError(null);
+  } catch (err) {
+    console.error('Failed to parse private file:', err);
+    setError('Failed to parse private file. Please try again.');
+  } finally {
+    setIsParsingPrivateFile(false);
+  }
+};
 
   const applyPrivateData = (parsedData) => {
     setSecAssumptions({

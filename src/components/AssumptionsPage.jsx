@@ -195,6 +195,11 @@ const AssumptionsPage = ({
       capex_schedule: parsedData.capex_schedule != null ? parsedData.capex_schedule : assumptions.capex_schedule,
       tax_rate: parsedData.tax_rate != null ? parsedData.tax_rate : assumptions.tax_rate,
       nols: parsedData.nols != null ? parsedData.nols : assumptions.nols,
+      adv_30d: parsedData.adv_30d != null ? parsedData.adv_30d : assumptions.adv_30d,
+      atm_pct_adv: parsedData.atm_pct_adv != null ? parsedData.atm_pct_adv : assumptions.atm_pct_adv,
+      pipe_discount: parsedData.pipe_discount != null ? parsedData.pipe_discount : assumptions.pipe_discount,
+      fees_ecm: parsedData.fees_ecm != null ? parsedData.fees_ecm : assumptions.fees_ecm,
+      fees_oid: parsedData.fees_oid != null ? parsedData.fees_oid : assumptions.fees_oid,
     });
     setParsedSecData(null);
   };
@@ -210,6 +215,11 @@ const AssumptionsPage = ({
       capex_schedule: parsedData.capex_schedule != null ? parsedData.capex_schedule : assumptions.capex_schedule,
       tax_rate: parsedData.tax_rate != null ? parsedData.tax_rate : assumptions.tax_rate,
       nols: parsedData.nols != null ? parsedData.nols : assumptions.nols,
+      adv_30d: parsedData.adv_30d != null ? parsedData.adv_30d : assumptions.adv_30d,
+      atm_pct_adv: parsedData.atm_pct_adv != null ? parsedData.atm_pct_adv : assumptions.atm_pct_adv,
+      pipe_discount: parsedData.pipe_discount != null ? parsedData.pipe_discount : assumptions.pipe_discount,
+      fees_ecm: parsedData.fees_ecm != null ? parsedData.fees_ecm : assumptions.fees_ecm,
+      fees_oid: parsedData.fees_oid != null ? parsedData.fees_oid : assumptions.fees_oid,
     });
     setParsedPrivateData(null);
   };
@@ -345,6 +355,59 @@ const AssumptionsPage = ({
                 disabled={mode === 'sec' && parsedSecData?.capex_schedule}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Insert the new Capital Routes/Capacity section here */}
+        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+          <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Capital Routes/Capacity
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <HybridInput
+              label="30-Day ADV ($)"
+              value={assumptions.adv_30d}
+              onChange={(value) => setAssumptions({ ...assumptions, adv_30d: parseFloat(value) })}
+              tooltip="30-day average daily trading volume in dollars"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.adv_30d}
+            />
+            <HybridInput
+              label="ATM % of ADV"
+              value={assumptions.atm_pct_adv}
+              onChange={(value) => setAssumptions({ ...assumptions, atm_pct_adv: parseFloat(value) })}
+              suffix="%"
+              tooltip="At-the-market offering as a percentage of average daily volume"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.atm_pct_adv}
+            />
+            <HybridInput
+              label="PIPE Discount"
+              value={assumptions.pipe_discount}
+              onChange={(value) => setAssumptions({ ...assumptions, pipe_discount: parseFloat(value) })}
+              suffix="%"
+              tooltip="Discount applied to Private Investment in Public Equity"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.pipe_discount}
+            />
+            <HybridInput
+              label="ECM Fees"
+              value={assumptions.fees_ecm}
+              onChange={(value) => setAssumptions({ ...assumptions, fees_ecm: parseFloat(value) })}
+              suffix="%"
+              tooltip="Equity Capital Markets fees as a percentage"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.fees_ecm}
+            />
+            <HybridInput
+              label="OID Fees"
+              value={assumptions.fees_oid}
+              onChange={(value) => setAssumptions({ ...assumptions, fees_oid: parseFloat(value) })}
+              suffix="%"
+              tooltip="Original Issue Discount fees as a percentage"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.fees_oid}
+            />
           </div>
         </div>
 
