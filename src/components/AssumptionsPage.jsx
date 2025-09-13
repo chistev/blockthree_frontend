@@ -50,13 +50,16 @@ const AssumptionsPage = ({
   const [selectedConfig, setSelectedConfig] = useState('');
   const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
   const [isFetchingSECData, setIsFetchingSECData] = useState(false);
-  // New state for net-new mode fields
+  // Updated state for net-new mode fields
   const [netNewAssumptions, setNetNewAssumptions] = useState({
     starting_equity: assumptions.initial_equity_value || 90000000,
     btc_allocation_pct: 0.1, // Default 10%
     opex_per_month: 100000, // Default $100,000
     planned_debt_capacity: assumptions.LoanPrincipal || 25000000,
     initial_share_count: 1000000, // Default 1M shares
+    capex_schedule: assumptions.capex_schedule || [], // Default empty array
+    tax_rate: assumptions.tax_rate || 0.2, // Default 20%
+    nols: assumptions.nols || 0, // Default 0
   });
 
   useEffect(() => {
@@ -70,9 +73,14 @@ const AssumptionsPage = ({
         ...prev,
         initial_equity_value: netNewAssumptions.starting_equity,
         LoanPrincipal: netNewAssumptions.planned_debt_capacity,
-        // Calculate BTC_treasury based on allocation percentage
         BTC_treasury: (netNewAssumptions.starting_equity * netNewAssumptions.btc_allocation_pct) /
           (prev.BTC_current_market_price || 117000),
+        shares_basic: netNewAssumptions.initial_share_count,
+        shares_fd: netNewAssumptions.initial_share_count * 1.1, // Assume 10% dilution
+        opex_monthly: netNewAssumptions.opex_per_month,
+        capex_schedule: netNewAssumptions.capex_schedule,
+        tax_rate: netNewAssumptions.tax_rate,
+        nols: netNewAssumptions.nols,
       }));
     }
   }, [netNewAssumptions, mode, setAssumptions]);
@@ -94,7 +102,7 @@ const AssumptionsPage = ({
         setError('Failed to save configuration. Please try again.');
       }
     };
-    
+
     saveConfiguration(assumptions, name, setLocalSavedConfigs, setError);
     setConfigName('');
   }, [assumptions, setError]);
@@ -114,7 +122,7 @@ const AssumptionsPage = ({
         setError('Failed to load configuration. Please try again.');
       }
     };
-    
+
     loadConfiguration(name, setAssumptions, setError);
   }, [setAssumptions, setError]);
 
@@ -131,7 +139,7 @@ const AssumptionsPage = ({
         setError('Failed to delete configuration. Please try again.');
       }
     };
-    
+
     deleteConfiguration(name, setLocalSavedConfigs, setError);
     if (selectedConfig === name) {
       setSelectedConfig('');
@@ -181,6 +189,12 @@ const AssumptionsPage = ({
       sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
       sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
       sec_cash_reserves: parsedData.cash_reserves != null ? parsedData.cash_reserves : 0,
+      shares_basic: parsedData.shares_basic != null ? parsedData.shares_basic : assumptions.shares_basic,
+      shares_fd: parsedData.shares_fd != null ? parsedData.shares_fd : assumptions.shares_fd,
+      opex_monthly: parsedData.opex_monthly != null ? parsedData.opex_monthly : assumptions.opex_monthly,
+      capex_schedule: parsedData.capex_schedule != null ? parsedData.capex_schedule : assumptions.capex_schedule,
+      tax_rate: parsedData.tax_rate != null ? parsedData.tax_rate : assumptions.tax_rate,
+      nols: parsedData.nols != null ? parsedData.nols : assumptions.nols,
     });
     setParsedSecData(null);
   };
@@ -190,6 +204,12 @@ const AssumptionsPage = ({
       sec_initial_equity_value: parsedData.total_equity != null ? parsedData.total_equity : assumptions.initial_equity_value,
       sec_loan_principal: parsedData.total_debt != null ? parsedData.total_debt : assumptions.LoanPrincipal,
       sec_cash_reserves: parsedData.cash_reserves != null ? parsedData.cash_reserves : 0,
+      shares_basic: parsedData.shares_basic != null ? parsedData.shares_basic : assumptions.shares_basic,
+      shares_fd: parsedData.shares_fd != null ? parsedData.shares_fd : assumptions.shares_fd,
+      opex_monthly: parsedData.opex_monthly != null ? parsedData.opex_monthly : assumptions.opex_monthly,
+      capex_schedule: parsedData.capex_schedule != null ? parsedData.capex_schedule : assumptions.capex_schedule,
+      tax_rate: parsedData.tax_rate != null ? parsedData.tax_rate : assumptions.tax_rate,
+      nols: parsedData.nols != null ? parsedData.nols : assumptions.nols,
     });
     setParsedPrivateData(null);
   };
@@ -257,53 +277,162 @@ const AssumptionsPage = ({
           </div>
         </div>
 
+        <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
+          <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Balance Sheet Parameters
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Basic Shares Outstanding"
+              value={assumptions.shares_basic}
+              onChange={(val) => setAssumptions({ ...assumptions, shares_basic: parseFloat(val) || 0 })}
+              tooltip="Number of basic shares outstanding"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.shares_basic}
+            />
+            <InputField
+              label="Fully Diluted Shares"
+              value={assumptions.shares_fd}
+              onChange={(val) => setAssumptions({ ...assumptions, shares_fd: parseFloat(val) || 0 })}
+              tooltip="Number of fully diluted shares"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.shares_fd}
+            />
+            <InputField
+              label="Monthly Operating Expenses ($)"
+              value={assumptions.opex_monthly}
+              onChange={(val) => setAssumptions({ ...assumptions, opex_monthly: parseFloat(val) || 0 })}
+              tooltip="Monthly operating expenses"
+              darkMode={darkMode}
+              disabled={(mode === 'sec' && parsedSecData?.opex_monthly) || (mode === 'private' && parsedPrivateData?.opex_monthly)}
+            />
+            <InputField
+              label="Tax Rate (%)"
+              value={assumptions.tax_rate * 100}
+              onChange={(val) => setAssumptions({ ...assumptions, tax_rate: parseFloat(val) / 100 || 0 })}
+              tooltip="Effective corporate tax rate"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.tax_rate}
+            />
+            <InputField
+              label="Net Operating Losses ($)"
+              value={assumptions.nols}
+              onChange={(val) => setAssumptions({ ...assumptions, nols: parseFloat(val) || 0 })}
+              tooltip="Net operating loss carryforwards"
+              darkMode={darkMode}
+              disabled={mode === 'sec' && parsedSecData?.nols}
+            />
+            <div className="col-span-2">
+              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                Capital Expenditure Schedule (JSON)
+              </label>
+              <textarea
+                value={JSON.stringify(assumptions.capex_schedule, null, 2)}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value);
+                    if (Array.isArray(parsed) && parsed.every(val => typeof val === 'number' && !isNaN(val))) {
+                      setAssumptions({ ...assumptions, capex_schedule: parsed });
+                    } else {
+                      setError('capex_schedule must be an array of numbers');
+                    }
+                  } catch {
+                    setError('Invalid JSON format for capex_schedule');
+                  }
+                }}
+                className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                rows={4}
+                disabled={mode === 'sec' && parsedSecData?.capex_schedule}
+              />
+            </div>
+          </div>
+        </div>
+
         {mode === 'net-new' && (
           <div className={`p-4 sm:p-6 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} mb-6`}>
             <h3 className={`text-base sm:text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Net-New / Pro-Forma Parameters
             </h3>
-            <InputField
-              label="Starting Equity"
-              value={netNewAssumptions.starting_equity}
-              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, starting_equity: val })}
-              suffix="USD"
-              tooltip="Total equity value at the start of the pro-forma analysis"
-              darkMode={darkMode}
-            />
-            <HybridInput
-              label="Intended BTC Allocation"
-              value={netNewAssumptions.btc_allocation_pct}
-              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, btc_allocation_pct: val })}
-              min={0}
-              max={1}
-              step={0.01}
-              suffix="%"
-              tooltip="Percentage of starting equity to allocate to BTC treasury"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="Opex per Month"
-              value={netNewAssumptions.opex_per_month}
-              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, opex_per_month: val })}
-              suffix="USD"
-              tooltip="Monthly operational expenditure"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="Planned Debt Capacity"
-              value={netNewAssumptions.planned_debt_capacity}
-              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, planned_debt_capacity: val })}
-              suffix="USD"
-              tooltip="Maximum debt the company plans to take on"
-              darkMode={darkMode}
-            />
-            <InputField
-              label="Initial Share Count"
-              value={netNewAssumptions.initial_share_count}
-              onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, initial_share_count: val })}
-              tooltip="Number of shares outstanding at the start"
-              darkMode={darkMode}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField
+                label="Starting Equity"
+                value={netNewAssumptions.starting_equity}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, starting_equity: parseFloat(val) || 0 })}
+                suffix="USD"
+                tooltip="Total equity value at the start of the pro-forma analysis"
+                darkMode={darkMode}
+              />
+              <HybridInput
+                label="Intended BTC Allocation"
+                value={netNewAssumptions.btc_allocation_pct}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, btc_allocation_pct: parseFloat(val) || 0 })}
+                min={0}
+                max={1}
+                step={0.01}
+                suffix="%"
+                tooltip="Percentage of starting equity to allocate to BTC treasury"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Opex per Month"
+                value={netNewAssumptions.opex_per_month}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, opex_per_month: parseFloat(val) || 0 })}
+                suffix="USD"
+                tooltip="Monthly operational expenditure"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Planned Debt Capacity"
+                value={netNewAssumptions.planned_debt_capacity}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, planned_debt_capacity: parseFloat(val) || 0 })}
+                suffix="USD"
+                tooltip="Maximum debt the company plans to take on"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Initial Share Count"
+                value={netNewAssumptions.initial_share_count}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, initial_share_count: parseFloat(val) || 0 })}
+                tooltip="Number of shares outstanding at the start"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Tax Rate (%)"
+                value={netNewAssumptions.tax_rate * 100}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, tax_rate: parseFloat(val) / 100 || 0 })}
+                tooltip="Effective corporate tax rate"
+                darkMode={darkMode}
+              />
+              <InputField
+                label="Net Operating Losses ($)"
+                value={netNewAssumptions.nols}
+                onChange={(val) => setNetNewAssumptions({ ...netNewAssumptions, nols: parseFloat(val) || 0 })}
+                tooltip="Net operating loss carryforwards"
+                darkMode={darkMode}
+              />
+              <div className="col-span-2">
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                  Capital Expenditure Schedule (JSON)
+                </label>
+                <textarea
+                  value={JSON.stringify(netNewAssumptions.capex_schedule, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      if (Array.isArray(parsed) && parsed.every(val => typeof val === 'number' && !isNaN(val))) {
+                        setNetNewAssumptions({ ...netNewAssumptions, capex_schedule: parsed });
+                      } else {
+                        setError('capex_schedule must be an array of numbers');
+                      }
+                    } catch {
+                      setError('Invalid JSON format for capex_schedule');
+                    }
+                  }}
+                  className={`w-full p-2 rounded-lg border ${darkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  rows={4}
+                />
+              </div>
+            </div>
           </div>
         )}
 

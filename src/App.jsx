@@ -60,6 +60,13 @@ const DEFAULT_ASSUMPTIONS = {
   jump_intensity: 0.1,
   jump_mean: 0.0,
   jump_volatility: 0.2,
+  // New balance sheet fields
+  shares_basic: 1000000, // Basic shares outstanding
+  shares_fd: 1100000, // Fully diluted shares
+  opex_monthly: 100000, // Monthly operating expenses
+  capex_schedule: [], // Array of capital expenditure schedules
+  tax_rate: 0.2, // Effective tax rate
+  nols: 0, // Net operating loss carryforwards
 };
 
 const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
@@ -143,52 +150,6 @@ const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
   });
 
   return paths;
-};
-
-// Configuration Utilities
-const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
-  if (!configName.trim()) {
-    setError('Configuration name cannot be empty');
-    return;
-  }
-  try {
-    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
-    existingConfigs[configName] = { assumptions, timestamp: new Date().toISOString() };
-    localStorage.setItem('savedConfigs', JSON.stringify(existingConfigs));
-    setSavedConfigs(existingConfigs);
-    setError(null);
-  } catch (err) {
-    console.error('Failed to save configuration:', err);
-    setError('Failed to save configuration. Please try again.');
-  }
-};
-
-const loadConfiguration = (configName, setAssumptions, setError) => {
-  try {
-    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
-    if (existingConfigs[configName]) {
-      setAssumptions(existingConfigs[configName].assumptions);
-      setError(null);
-    } else {
-      setError('Configuration not found');
-    }
-  } catch (err) {
-    console.error('Failed to load configuration:', err);
-    setError('Failed to load configuration. Please try again.');
-  }
-};
-
-const deleteConfiguration = (configName, setSavedConfigs, setError) => {
-  try {
-    const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
-    delete existingConfigs[configName];
-    localStorage.setItem('savedConfigs', JSON.stringify(existingConfigs));
-    setSavedConfigs(existingConfigs);
-    setError(null);
-  } catch (err) {
-    console.error('Failed to delete configuration:', err);
-    setError('Failed to delete configuration. Please try again.');
-  }
 };
 
 const getSavedConfigurations = () => {
