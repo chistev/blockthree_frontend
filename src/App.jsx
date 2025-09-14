@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import DocumentationModal from './components/DocumentationModal';
-import MetricCard from './components/MetricCard'; // Import MetricCard
+import MetricCard from './components/MetricCard';
 import { mapResults } from './components/mapResults';
 import LandingPage from './components/LandingPage';
 import AssumptionsPage from './components/AssumptionsPage';
 import RunModelsPage from './components/RunModelsPage';
+import DecisionView from './components/DecisionView';
 import './index.css';
 import {
   TrendingDown,
@@ -668,6 +669,17 @@ const App = () => {
         />
       )}
       {currentPage === 'dashboard' && results && <DashboardPage />}
+      {currentPage === 'decision' && results && (
+        <DecisionView
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+        />
+      )}
     </>
   );
 };
