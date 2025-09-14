@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import DocumentationModal from './components/DocumentationModal';
+import MetricCard from './components/MetricCard'; // Import MetricCard
 import { mapResults } from './components/mapResults';
 import LandingPage from './components/LandingPage';
 import AssumptionsPage from './components/AssumptionsPage';
+import RunModelsPage from './components/RunModelsPage';
 import './index.css';
 import {
   TrendingDown,
@@ -60,33 +62,6 @@ const DEFAULT_ASSUMPTIONS = {
   jump_mean: 0.0,
   jump_volatility: 0.2,
 };
-
-// MetricCard component
-const MetricCard = ({ title, value, description, tooltip, icon: Icon, format = "number", darkMode }) => (
-  <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-sm transition-all hover:shadow-md relative group`}>
-    <div className="flex items-center justify-between mb-2">
-      <Icon className={`w-4 h-4 ${darkMode ? 'text-[#CDA349]' : 'text-[#0A1F44]'}`} />
-      {tooltip && (
-        <span className="ml-2 text-xs text-[#334155] cursor-help" title={tooltip}>
-          <Info className="w-4 h-4" />
-        </span>
-      )}
-    </div>
-    <h3 className={`text-sm font-medium mb-1 ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>
-      {title}
-    </h3>
-    <p className={`text-xl sm:text-2xl font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-      {format === "currency" ? `$${(value / 1000000).toFixed(1)}M` :
-        format === "percentage" ? `${(value * 100).toFixed(1)}%` :
-          value.toFixed(2)}
-    </p>
-    {description && (
-      <p className={`text-xs mt-2 ${darkMode ? 'text-[#9CA3AF]' : 'text-[#6B7280]'}`}>
-        {description}
-      </p>
-    )}
-  </div>
-);
 
 // API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
@@ -234,7 +209,7 @@ const App = () => {
       );
       setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
       setCalculationProgress(100);
-      setCurrentPage('dashboard');
+      setCurrentPage('runModels');
     } finally {
       clearInterval(progressInterval);
       setTimeout(() => {
@@ -275,7 +250,7 @@ const App = () => {
         body.param = param;
         body.value = value;
       }
-      const response = await fetch(`http://127.0.0.1:8000/${endpoint}`, {
+      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -442,7 +417,7 @@ const App = () => {
               },
               {
                 title: "LTV Exceedance",
-                value: offensiveltv.exceed_prob,
+                value: results.ltv.exceed_prob,
                 description: "Probability LTV exceeds cap",
                 tooltip: "Likelihood that the Loan-to-Value ratio exceeds the LTV Cap.",
                 icon: AlertTriangle,
@@ -676,6 +651,20 @@ const App = () => {
           mode={mode}
           setMode={setMode}
           handleCalculate={handleCalculate}
+        />
+      )}
+      {currentPage === 'runModels' && results && (
+        <RunModelsPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          isCalculating={isCalculating}
+          calculationProgress={calculationProgress}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+          error={error}
         />
       )}
       {currentPage === 'dashboard' && results && <DashboardPage />}
