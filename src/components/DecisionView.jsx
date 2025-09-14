@@ -1,13 +1,27 @@
+import { useState } from 'react';
 import {
   Home,
   Sliders,
   Sun,
   Moon,
   Info,
-  FileText,
+  DollarSign,
+  AlertTriangle,
+  TrendingDown,
+  Target,
 } from 'lucide-react';
 import DocumentationModal from './DocumentationModal';
-import { ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
+import MetricCard from './MetricCard';
+import {
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { LineChart, Line } from 'recharts';
 
 const DecisionView = ({
@@ -19,48 +33,56 @@ const DecisionView = ({
   setIsDocModalOpen,
   isDocModalOpen,
 }) => {
-  // Calculate runway (consistent with RunModelsPage.jsx)
-  const annualBurnRate = 12000000; // $1M/month
-  const runwayMonths = assumptions.new_equity_raised / (annualBurnRate / 12);
-
-  // Mock data for three options (replace with actual backend data)
+  // Sample option data (since backend doesn't provide explicit options, we derive from scenario_metrics)
   const options = [
     {
-      name: 'BTC-Backed Loan',
-      dilution: results?.dilution.base_dilution || 0.08,
-      runway: runwayMonths,
-      ltvBreachRisk: results?.ltv.exceed_prob || 0.25,
-      roe: results?.roe.avg_roe || 0.15,
-      navPath: results?.nav.nav_paths.slice(0, 10).map((v, i) => ({ time: i / 10, value: v })), // Simplified for sparkline
+      id: 'option1',
+      title: 'BTC-Backed Loan',
+      dilution: results.dilution.base_dilution,
+      ltvRisk: results.ltv.exceed_prob,
+      roe: results.roe.avg_roe,
+      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12), // Cash reserves / monthly burn rate
+      sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
+        time: i / 20,
+        value: point.value,
+      })),
     },
     {
-      name: 'Convertible Note',
-      dilution: (results?.dilution.base_dilution || 0.08) * 1.2, // 20% higher dilution
-      runway: runwayMonths * 1.1, // Slightly longer runway
-      ltvBreachRisk: (results?.ltv.exceed_prob || 0.25) * 0.8, // Lower LTV risk
-      roe: (results?.roe.avg_roe || 0.15) * 0.9, // Slightly lower ROE
-      navPath: results?.nav.nav_paths.slice(0, 10).map((v, i) => ({ time: i / 10, value: v * 1.1 })), // Adjusted
+      id: 'option2',
+      title: 'Convertible Note',
+      dilution: results.dilution.avg_dilution * 0.9, // Adjust for variation
+      ltvRisk: results.ltv.exceed_prob * 0.8,
+      roe: results.roe.avg_roe * 0.95,
+      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 1.1, // Slightly longer runway
+      sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
+        time: i / 20,
+        value: point.value * 0.95,
+      })),
     },
     {
-      name: 'Hybrid Structure',
-      dilution: (results?.dilution.base_dilution || 0.08) * 0.9, // Lower dilution
-      runway: runwayMonths * 0.95, // Slightly shorter runway
-      ltvBreachRisk: (results?.ltv.exceed_prob || 0.25) * 1.1, // Higher LTV risk
-      roe: (results?.roe.avg_roe || 0.15) * 1.05, // Slightly higher ROE
-      navPath: results?.nav.nav_paths.slice(0, 10).map((v, i) => ({ time: i / 10, value: v * 0.95 })), // Adjusted
+      id: 'option3',
+      title: 'Hybrid Structure',
+      dilution: results.dilution.avg_dilution * 1.1,
+      ltvRisk: results.ltv.exceed_prob * 1.2,
+      roe: results.roe.avg_roe * 1.05,
+      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 0.9, // Slightly shorter runway
+      sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
+        time: i / 20,
+        value: point.value * 1.05,
+      })),
     },
   ];
 
-  // Data for scatter chart
-  const scatterData = options.map(option => ({
-    name: option.name,
-    dilution: option.dilution * 100, // Convert to %
-    runway: option.runway,
-    ltvBreachRisk: option.ltvBreachRisk * 100, // Convert to % for bubble size
+  // Data for comparative frontier chart
+  const scatterData = options.map((opt) => ({
+    name: opt.title,
+    dilution: opt.dilution * 100, // Convert to percentage
+    runway: opt.runway,
+    ltvRisk: opt.ltvRisk * 100, // For bubble size
   }));
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-[#111827]' : 'bg-[#F9FAFB]'} font-inter`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-[#111827]' : 'bg-[#F9FAFB]'} font-inter p-4 sm:p-6`}>
       {/* Header */}
       <nav className={`px-4 sm:px-8 py-3 border-b ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'}`}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
@@ -82,7 +104,7 @@ const DecisionView = ({
               Assumptions
             </button>
             <h1 className={`text-[28px] font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-              Decision View
+              Decision Options
             </h1>
           </div>
           <div className="flex items-center space-x-2">
@@ -104,70 +126,76 @@ const DecisionView = ({
       </nav>
 
       {/* Main Content */}
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto mt-6">
         {/* Option Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           {options.map((option) => (
             <div
-              key={option.name}
+              key={option.id}
               className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}
             >
-              <h3 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                {option.name}
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className={`text-[20px] font-bold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                    {(option.dilution * 100).toFixed(1)}%
-                  </p>
-                  <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                    Dilution
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-[20px] font-bold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                    {option.runway.toFixed(1)} mo
-                  </p>
-                  <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                    Runway
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-[20px] font-bold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                    {(option.ltvBreachRisk * 100).toFixed(1)}%
-                  </p>
-                  <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                    LTV Breach Risk
-                  </p>
-                </div>
-                <div>
-                  <p className={`text-[20px] font-bold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                    {(option.roe * 100).toFixed(1)}%
-                  </p>
-                  <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                    Expected ROE
-                  </p>
-                </div>
+              <h2 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+                {option.title}
+              </h2>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <MetricCard
+                  title="Dilution"
+                  value={option.dilution}
+                  description="Equity dilution impact"
+                  tooltip="Dilution from new equity, adjusted by NAV paths"
+                  icon={TrendingDown}
+                  format="percentage"
+                  darkMode={darkMode}
+                  highlight={option.dilution > 0.1 ? 'red' : null}
+                />
+                <MetricCard
+                  title="Runway"
+                  value={option.runway}
+                  description="Months of cash reserves"
+                  tooltip="Calculated as Cash Reserves ÷ Monthly Burn Rate"
+                  icon={DollarSign}
+                  format="number"
+                  darkMode={darkMode}
+                  highlight={option.runway < 12 ? 'red' : null}
+                />
+                <MetricCard
+                  title="LTV Breach Risk"
+                  value={option.ltvRisk}
+                  description="Probability LTV exceeds cap"
+                  tooltip="Likelihood that the Loan-to-Value ratio exceeds the LTV Cap"
+                  icon={AlertTriangle}
+                  format="percentage"
+                  darkMode={darkMode}
+                  highlight={option.ltvRisk > 0.5 ? 'red' : null}
+                />
+                <MetricCard
+                  title="Expected ROE"
+                  value={option.roe}
+                  description="Return on Equity"
+                  tooltip="Calculated using CAPM, adjusted for BTC volatility and beta"
+                  icon={Target}
+                  format="percentage"
+                  darkMode={darkMode}
+                />
               </div>
-              {/* Sparkline */}
-              <div className="h-16 mt-4">
+              {/* Sparkline Chart */}
+              <div className="h-24 mb-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={option.navPath} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                  <LineChart data={option.sparklineData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                     <Line
                       type="monotone"
                       dataKey="value"
-                      stroke="#CDA349"
+                      stroke={darkMode ? '#CDA349' : '#0A1F44'}
                       strokeWidth={2}
                       dot={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              {/* CTA Button */}
               <button
-                className="w-full mt-4 px-4 py-2 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a]"
+                onClick={() => setCurrentPage('termSheet')}
+                className={`w-full px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a]`}
               >
-                <FileText className="w-4 h-4 inline-block mr-1" />
                 View Term Sheet
               </button>
             </div>
@@ -176,69 +204,59 @@ const DecisionView = ({
 
         {/* Comparative Frontier Chart */}
         <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
-          <h3 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+          <h2 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
             Comparative Frontier
-          </h3>
-          <div className="h-80">
+          </h2>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+              <ScatterChart margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
                 <XAxis
-                  type="number"
                   dataKey="dilution"
                   name="Dilution"
                   unit="%"
-                  domain={['auto', 'auto']}
+                  type="number"
+                  tickFormatter={(v) => `${v.toFixed(1)}%`}
                   stroke={darkMode ? '#D1D5DB' : '#334155'}
-                  tickFormatter={(value) => value.toFixed(1)}
                 />
                 <YAxis
-                  type="number"
                   dataKey="runway"
                   name="Runway"
-                  unit="mo"
-                  domain={['auto', 'auto']}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                  tickFormatter={(value) => value.toFixed(0)}
-                />
-                <ZAxis
+                  unit=" months"
                   type="number"
-                  dataKey="ltvBreachRisk"
-                  range={[50, 300]} // Adjust bubble size range
-                  name="LTV Breach Risk"
-                  unit="%"
+                  tickFormatter={(v) => v.toFixed(0)}
+                  stroke={darkMode ? '#D1D5DB' : '#334155'}
                 />
                 <Tooltip
-                  cursor={{ strokeDasharray: '3 3' }}
-                  formatter={(value, name) => [
-                    name === 'ltvBreachRisk' ? `${value.toFixed(1)}%` : name === 'dilution' ? `${value.toFixed(1)}%` : value.toFixed(1),
-                    name,
-                  ]}
-                  contentStyle={darkMode ? { backgroundColor: '#1F2937', border: '1px solid #374151' } : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }}
+                  formatter={(value, name) => {
+                    if (name === 'Dilution') return `${value.toFixed(1)}%`;
+                    if (name === 'Runway') return `${value.toFixed(0)} months`;
+                    return value;
+                  }}
+                  contentStyle={
+                    darkMode
+                      ? { backgroundColor: '#1F2937', border: '1px solid #374151' }
+                      : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }
+                  }
                 />
                 <Legend />
-                <Scatter name="Options" data={scatterData} fill="#CDA349">
-                  {scatterData.map((entry, index) => (
-                    <text
-                      key={`label-${index}`}
-                      x={entry.dilution}
-                      y={entry.runway}
-                      dy={-10}
-                      fontSize={12}
-                      fill={darkMode ? '#D1D5DB' : '#334155'}
-                      textAnchor="middle"
-                    >
-                      {entry.name}
-                    </text>
-                  ))}
-                </Scatter>
+                {scatterData.map((entry, index) => (
+                  <Scatter
+                    key={entry.name}
+                    name={entry.name}
+                    data={[entry]}
+                    fill={['#10b981', '#3b82f6', '#CDA349'][index % 3]}
+                    shape="circle"
+                    // Scale bubble size based on LTV risk (e.g., 10 to 50)
+                    r={Math.max(10, Math.min(50, entry.ltvRisk * 100))}
+                  />
+                ))}
               </ScatterChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Documentation Modal */}
       <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
     </div>
   );

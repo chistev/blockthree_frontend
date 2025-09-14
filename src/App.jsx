@@ -6,6 +6,7 @@ import LandingPage from './components/LandingPage';
 import AssumptionsPage from './components/AssumptionsPage';
 import RunModelsPage from './components/RunModelsPage';
 import DecisionView from './components/DecisionView';
+import TermSheetPage from './components/TermSheetPage';
 import './index.css';
 import {
   TrendingDown,
@@ -624,64 +625,77 @@ const App = () => {
   };
 
   return (
-    <>
-      {currentPage === 'landing' && (
-        <LandingPage
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          setCurrentPage={setCurrentPage}
-        />
-      )}
-      {currentPage === 'assumptions' && (
-        <AssumptionsPage
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          setCurrentPage={setCurrentPage}
-          assumptions={assumptions}
-          setAssumptions={setAssumptions}
-          savedConfigs={savedConfigs}
-          setSavedConfigs={setSavedConfigs}
-          isCalculating={isCalculating}
-          calculationProgress={calculationProgress}
-          setIsDocModalOpen={setIsDocModalOpen}
-          isDocModalOpen={isDocModalOpen}
-          error={error}
-          setError={setError}
-          ticker={ticker}
-          setTicker={setTicker}
-          mode={mode}
-          setMode={setMode}
-          handleCalculate={handleCalculate}
-        />
-      )}
-      {currentPage === 'runModels' && results && (
-        <RunModelsPage
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          setCurrentPage={setCurrentPage}
-          results={results}
-          assumptions={assumptions}
-          isCalculating={isCalculating}
-          calculationProgress={calculationProgress}
-          setIsDocModalOpen={setIsDocModalOpen}
-          isDocModalOpen={isDocModalOpen}
-          error={error}
-        />
-      )}
-      {currentPage === 'dashboard' && results && <DashboardPage />}
-      {currentPage === 'decision' && results && (
-        <DecisionView
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          setCurrentPage={setCurrentPage}
-          results={results}
-          assumptions={assumptions}
-          setIsDocModalOpen={setIsDocModalOpen}
-          isDocModalOpen={isDocModalOpen}
-        />
-      )}
-    </>
-  );
+  <>
+    {currentPage === 'landing' && (
+      <LandingPage
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setCurrentPage={setCurrentPage}
+      />
+    )}
+    {currentPage === 'assumptions' && (
+      <AssumptionsPage
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setCurrentPage={setCurrentPage}
+        assumptions={assumptions}
+        setAssumptions={setAssumptions}
+        savedConfigs={savedConfigs}
+        setSavedConfigs={setSavedConfigs}
+        isCalculating={isCalculating}
+        calculationProgress={calculationProgress}
+        setIsDocModalOpen={setIsDocModalOpen}
+        isDocModalOpen={isDocModalOpen}
+        error={error}
+        setError={setError}
+        ticker={ticker}
+        setTicker={setTicker}
+        mode={mode}
+        setMode={setMode}
+        handleCalculate={handleCalculate}
+      />
+    )}
+    {currentPage === 'runModels' && results && (
+      <RunModelsPage
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setCurrentPage={setCurrentPage}
+        results={results}
+        assumptions={assumptions}
+        isCalculating={isCalculating}
+        calculationProgress={calculationProgress}
+        setIsDocModalOpen={setIsDocModalOpen}
+        isDocModalOpen={isDocModalOpen}
+        error={error}
+      />
+    )}
+    {currentPage === 'dashboard' && results && <DashboardPage />}
+    {currentPage === 'decision' && results && (
+      <DecisionView
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setCurrentPage={setCurrentPage}
+        results={results}
+        assumptions={assumptions}
+        setIsDocModalOpen={setIsDocModalOpen}
+        isDocModalOpen={isDocModalOpen}
+      />
+    )}
+    {currentPage === 'termSheet' && results && (
+      <TermSheetPage
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        setCurrentPage={setCurrentPage}
+        results={results}
+        assumptions={assumptions}
+        setIsDocModalOpen={setIsDocModalOpen}
+        isDocModalOpen={isDocModalOpen}
+        error={error}
+        handleExport={handleExport}
+      />
+    )}
+  </>
+);
 };
 
 export default App;
