@@ -8,15 +8,15 @@ import { Home, Sun, Moon, Upload, Save, Folder, Trash2, Calculator } from 'lucid
 const DEFAULT_PARAMS = {
   BTC_treasury: 1000,
   BTC_purchased: 0,
-  BTC_current_market_price: 117000,
-  targetBTCPrice: 117000,
+  BTC_current_market_price: 115500,
+  targetBTCPrice: 115500,
   mu: 0.45,
   sigma: 0.55,
   t: 1,
   delta: 0.08,
   initial_equity_value: 90000000,
   new_equity_raised: 5000000,
-  IssuePrice: 117000,
+  IssuePrice: 115500,
   LoanPrincipal: 25000000,
   cost_of_debt: 0.06,
   dilution_vol_estimate: 0.55,
@@ -30,7 +30,6 @@ const DEFAULT_PARAMS = {
   jump_intensity: 0.1,
   jump_mean: 0.0,
   jump_volatility: 0.2,
-  min_profit_margin: 0.05,
 };
 
 const AssumptionsPage = ({
@@ -315,7 +314,7 @@ const AssumptionsPage = ({
                   type="text"
                   value={ticker}
                   onChange={(e) => setTicker(e.target.value)}
-                  placeholder="Enter ticker symbol (e.g. AMZN, AAPL, etc.)"
+                  placeholder="Enter ticker symbol (e.g. AMZN, etc.)"
                   className={`w-full sm:w-[300px] px-3 py-2 rounded-lg border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
                 />
                 <button
@@ -456,12 +455,12 @@ const AssumptionsPage = ({
               <InputField
                 label="Current BTC Price"
                 value={assumptions.BTC_current_market_price}
-                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, BTC_current_market_price: val }))}
+                onChange={null}
                 suffix="USD"
                 tooltip="Current market price of Bitcoin"
                 darkMode={darkMode}
                 className="text-[14px]"
-                disabled={mode === 'public' && lockDefaults}
+                disabled={true}
               />
               <InputField
                 label="Target BTC Price"
@@ -707,19 +706,6 @@ const AssumptionsPage = ({
                 max={0.5}
                 step={0.01}
                 tooltip="Volatility of price jumps in BTC"
-                darkMode={darkMode}
-                className="text-[14px]"
-                disabled={mode === 'public' && lockDefaults}
-              />
-              <InputField
-                label="Min Profit Margin"
-                value={assumptions.min_profit_margin}
-                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, min_profit_margin: val }))}
-                min={0}
-                max={0.5}
-                step={0.01}
-                suffix="%"
-                tooltip="Minimum profit margin for treasury"
                 darkMode={darkMode}
                 className="text-[14px]"
                 disabled={mode === 'public' && lockDefaults}
