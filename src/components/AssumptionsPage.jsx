@@ -57,12 +57,24 @@ const AssumptionsPage = ({
   const [selectedConfig, setSelectedConfig] = useState('');
   const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
   const [isFetchingData, setIsFetchingData] = useState(false);
-  const [lockDefaults, setLockDefaults] = useState(true); // Toggle for locking non-SEC fields in Public/SEC Mode
+  const [lockDefaults, setLockDefaults] = useState(true);
+  // New state for success feedback
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Sync localSavedConfigs with savedConfigs
   useEffect(() => {
     setSavedConfigs(localSavedConfigs);
   }, [localSavedConfigs, setSavedConfigs]);
+
+  // Clear success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000); // 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   // Fetch live BTC price in Public/SEC Mode
   useEffect(() => {
@@ -171,6 +183,7 @@ const AssumptionsPage = ({
 
     setIsFetchingData(true);
     setError(null);
+    setSuccessMessage(null); // Clear success message
 
     const formData = new FormData();
     formData.append('file', file);
@@ -193,9 +206,12 @@ const AssumptionsPage = ({
         new_equity_raised: data.new_equity_raised || prev.new_equity_raised,
       }));
       setError(null);
+      setSuccessMessage('SEC filing data successfully uploaded and parsed.');
     } catch (err) {
       console.error('Failed to upload and parse file:', err);
-      setError('Failed to process SEC filing. Please try again.');
+      setError(err.message.includes('Unsupported file format')
+        ? err.message
+        : 'Failed to process SEC filing. Ensure the file is a valid PDF, XLSX, CSV, or DOCX with financial data.');
     } finally {
       setIsFetchingData(false);
     }
@@ -210,6 +226,7 @@ const AssumptionsPage = ({
 
     setIsFetchingData(true);
     setError(null);
+    setSuccessMessage(null); // Clear previous success message
 
     try {
       const response = await fetch('http://127.0.0.1:8000/api/fetch_sec_data/', {
@@ -220,7 +237,13 @@ const AssumptionsPage = ({
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        if (data.error.includes('rate limit')) {
+          setError('Alpha Vantage API rate limit exceeded. Please try again in a few minutes.');
+        } else {
+          throw new Error(data.error);
+        }
+      }
 
       setAssumptions((prev) => ({
         ...prev,
@@ -229,6 +252,7 @@ const AssumptionsPage = ({
         new_equity_raised: data.new_equity_raised || prev.new_equity_raised,
       }));
       setError(null);
+      setSuccessMessage(`Successfully fetched SEC data for ticker ${ticker}.`); // Set success message
     } catch (err) {
       console.error('Failed to fetch SEC data:', err);
       setError('Failed to fetch SEC data. Please check the ticker symbol.');
@@ -291,7 +315,7 @@ const AssumptionsPage = ({
                   type="text"
                   value={ticker}
                   onChange={(e) => setTicker(e.target.value)}
-                  placeholder="Enter ticker symbol"
+                  placeholder="Enter ticker symbol (e.g. AMZN, AAPL, etc.)"
                   className={`w-full sm:w-[300px] px-3 py-2 rounded-lg border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
                 />
                 <button
@@ -311,10 +335,10 @@ const AssumptionsPage = ({
               </div>
               <label className={`flex items-center justify-center w-full sm:w-[400px] p-4 border-2 border-dashed rounded-lg ${darkMode ? 'border-[#374151] bg-[#1F2937]' : 'border-[#E5E7EB] bg-white'} cursor-pointer`}>
                 <Upload className={`w-5 h-5 mr-2 ${darkMode ? 'text-[#CDA349]' : 'text-[#0A1F44]'}`} />
-                <span className={`text-[14px] ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>Upload 10-K/10-Q</span>
+                <span className={`text-[14px] ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>Upload 10-K/10-Q (PDF, XLSX, CSV, DOCX)</span>
                 <input
                   type="file"
-                  accept=".pdf,.xlsx,.csv"
+                  accept=".pdf,.xlsx,.csv,.docx"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
@@ -322,6 +346,13 @@ const AssumptionsPage = ({
             </>
           )}
         </div>
+
+        {/* Success Message Display */}
+        {successMessage && (
+          <div className={`p-4 rounded-[12px] bg-green-100 border border-green-300 text-green-800 text-[14px] mb-4`}>
+            {successMessage}
+          </div>
+        )}
 
         {/* Configuration Management */}
         <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)] mb-6`}>
