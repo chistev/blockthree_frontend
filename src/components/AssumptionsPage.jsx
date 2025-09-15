@@ -2,7 +2,36 @@ import { useState, useEffect, useCallback } from 'react';
 import HybridInput from './HybridInput';
 import InputField from './InputField';
 import DocumentationModal from './DocumentationModal';
-import { Home, Sun, Moon, Upload, Save, Folder, Trash2, Calculator, Info } from 'lucide-react';
+import { Home, Sun, Moon, Upload, Save, Folder, Trash2, Calculator } from 'lucide-react';
+
+// Default parameters aligned with backend DEFAULT_PARAMS
+const DEFAULT_PARAMS = {
+  BTC_treasury: 1000,
+  BTC_purchased: 0,
+  BTC_current_market_price: 117000,
+  targetBTCPrice: 117000,
+  mu: 0.45,
+  sigma: 0.55,
+  t: 1,
+  delta: 0.08,
+  initial_equity_value: 90000000,
+  new_equity_raised: 5000000,
+  IssuePrice: 117000,
+  LoanPrincipal: 25000000,
+  cost_of_debt: 0.06,
+  dilution_vol_estimate: 0.55,
+  LTV_Cap: 0.5,
+  beta_ROE: 2.5,
+  expected_return_btc: 0.45,
+  risk_free_rate: 0.04,
+  vol_mean_reversion_speed: 0.5,
+  long_run_volatility: 0.5,
+  paths: 10000,
+  jump_intensity: 0.1,
+  jump_mean: 0.0,
+  jump_volatility: 0.2,
+  min_profit_margin: 0.05,
+};
 
 const AssumptionsPage = ({
   darkMode,
@@ -27,11 +56,42 @@ const AssumptionsPage = ({
   const [configName, setConfigName] = useState('');
   const [selectedConfig, setSelectedConfig] = useState('');
   const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
+  const [isFetchingData, setIsFetchingData] = useState(false);
+  const [lockDefaults, setLockDefaults] = useState(true); // Toggle for locking non-SEC fields in Public/SEC Mode
 
+  // Sync localSavedConfigs with savedConfigs
   useEffect(() => {
     setSavedConfigs(localSavedConfigs);
   }, [localSavedConfigs, setSavedConfigs]);
 
+  // Fetch live BTC price in Public/SEC Mode
+  useEffect(() => {
+    if (mode === 'public') {
+      const fetchBTCPrice = async () => {
+        try {
+          const response = await fetch('http://127.0.0.1:8000/api/btc_price/');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          if (data.BTC_current_market_price) {
+            setAssumptions((prev) => ({
+              ...prev,
+              BTC_current_market_price: data.BTC_current_market_price,
+              targetBTCPrice:
+                prev.targetBTCPrice === DEFAULT_PARAMS.targetBTCPrice
+                  ? data.BTC_current_market_price
+                  : prev.targetBTCPrice,
+            }));
+          }
+        } catch (err) {
+          console.error('Failed to fetch BTC price:', err);
+          setError('Failed to fetch live BTC price. Using default value.');
+        }
+      };
+      fetchBTCPrice();
+    }
+  }, [mode, setAssumptions, setError]);
+
+  // Save configuration to localStorage
   const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
     if (!configName.trim()) {
       setError('Configuration name cannot be empty');
@@ -49,6 +109,7 @@ const AssumptionsPage = ({
     }
   };
 
+  // Load configuration from localStorage
   const loadConfiguration = (configName, setAssumptions, setError) => {
     try {
       const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
@@ -64,6 +125,7 @@ const AssumptionsPage = ({
     }
   };
 
+  // Delete configuration from localStorage
   const deleteConfiguration = (configName, setSavedConfigs, setError) => {
     try {
       const existingConfigs = JSON.parse(localStorage.getItem('savedConfigs') || '{}');
@@ -102,12 +164,76 @@ const AssumptionsPage = ({
     [selectedConfig, setError]
   );
 
-  const handleFileUpload = (event) => {
+  // Handle file upload for SEC filings
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      console.log('File uploaded:', file.name);
+    if (!file) return;
+
+    setIsFetchingData(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('ticker', ticker);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/upload_sec_data/', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      setAssumptions((prev) => ({
+        ...prev,
+        initial_equity_value: data.initial_equity_value || prev.initial_equity_value,
+        LoanPrincipal: data.loan_principal || prev.LoanPrincipal,
+        new_equity_raised: data.new_equity_raised || prev.new_equity_raised,
+      }));
       setError(null);
-      // Add logic to parse 10-K/10-Q and update assumptions if needed
+    } catch (err) {
+      console.error('Failed to upload and parse file:', err);
+      setError('Failed to process SEC filing. Please try again.');
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
+  // Handle fetching SEC data
+  const handleFetchSECData = async () => {
+    if (!ticker.trim()) {
+      setError('Please enter a valid ticker symbol');
+      return;
+    }
+
+    setIsFetchingData(true);
+    setError(null);
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/fetch_sec_data/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      setAssumptions((prev) => ({
+        ...prev,
+        initial_equity_value: data.initial_equity_value || prev.initial_equity_value,
+        LoanPrincipal: data.loan_principal || prev.LoanPrincipal,
+        new_equity_raised: data.new_equity_raised || prev.new_equity_raised,
+      }));
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch SEC data:', err);
+      setError('Failed to fetch SEC data. Please check the ticker symbol.');
+    } finally {
+      setIsFetchingData(false);
     }
   };
 
@@ -158,23 +284,43 @@ const AssumptionsPage = ({
               Manual Mode
             </button>
           </div>
-          <input
-            type="text"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            placeholder="Enter ticker symbol"
-            className={`w-full sm:w-[300px] px-3 py-2 rounded-lg border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
-          />
-          <label className={`flex items-center justify-center w-full sm:w-[400px] p-4 border-2 border-dashed rounded-lg ${darkMode ? 'border-[#374151] bg-[#1F2937]' : 'border-[#E5E7EB] bg-white'} cursor-pointer`}>
-            <Upload className={`w-5 h-5 mr-2 ${darkMode ? 'text-[#CDA349]' : 'text-[#0A1F44]'}`} />
-            <span className={`text-[14px] ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>Upload 10-K/10-Q</span>
-            <input
-              type="file"
-              accept=".pdf,.xlsx,.csv"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+          {mode === 'public' && (
+            <>
+              <div className="flex space-x-2 w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={ticker}
+                  onChange={(e) => setTicker(e.target.value)}
+                  placeholder="Enter ticker symbol"
+                  className={`w-full sm:w-[300px] px-3 py-2 rounded-lg border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
+                />
+                <button
+                  onClick={handleFetchSECData}
+                  disabled={isFetchingData || !ticker.trim()}
+                  className={`px-4 py-2 bg-[#0A1F44] text-white rounded-lg text-[14px] hover:bg-[#1e3a8a] ${isFetchingData || !ticker.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isFetchingData ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
+                      Fetching...
+                    </>
+                  ) : (
+                    'Fetch SEC Data'
+                  )}
+                </button>
+              </div>
+              <label className={`flex items-center justify-center w-full sm:w-[400px] p-4 border-2 border-dashed rounded-lg ${darkMode ? 'border-[#374151] bg-[#1F2937]' : 'border-[#E5E7EB] bg-white'} cursor-pointer`}>
+                <Upload className={`w-5 h-5 mr-2 ${darkMode ? 'text-[#CDA349]' : 'text-[#0A1F44]'}`} />
+                <span className={`text-[14px] ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>Upload 10-K/10-Q</span>
+                <input
+                  type="file"
+                  accept=".pdf,.xlsx,.csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </>
+          )}
         </div>
 
         {/* Configuration Management */}
@@ -231,49 +377,80 @@ const AssumptionsPage = ({
           </div>
         </div>
 
+        {/* Warning for Default Values in Public/SEC Mode */}
+        {mode === 'public' && (
+          <div className={`p-4 rounded-[12px] bg-yellow-100 border border-yellow-300 text-yellow-800 text-[14px] mb-4`}>
+            <p>
+              Using default values for non-SEC parameters (e.g., BTC Treasury, LTV Cap).{' '}
+              <button onClick={() => setMode('manual')} className="underline">
+                Switch to Manual Mode
+              </button>{' '}
+              or{' '}
+              <button onClick={() => setLockDefaults(false)} className="underline">
+                unlock defaults
+              </button>{' '}
+              to edit all parameters.
+            </p>
+          </div>
+        )}
+
         {/* Assumptions Panels */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* BTC Parameters */}
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
-            <h3 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-              BTC Parameters
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-[20px] font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+                BTC Parameters
+              </h3>
+              {mode === 'public' && (
+                <button
+                  onClick={() => setLockDefaults(!lockDefaults)}
+                  className={`px-4 py-2 rounded-full text-[14px] font-medium ${lockDefaults ? 'bg-[#E5E7EB] text-[#0A1F44]' : 'bg-[#0A1F44] text-white'}`}
+                >
+                  {lockDefaults ? 'Unlock Defaults' : 'Lock Defaults'}
+                </button>
+              )}
+            </div>
             <div className="space-y-4">
               <InputField
                 label="Treasury BTC"
                 value={assumptions.BTC_treasury}
-                onChange={(val) => setAssumptions({ ...assumptions, BTC_treasury: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, BTC_treasury: val }))}
                 suffix="BTC"
                 tooltip="The amount of Bitcoin held in the treasury"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
-              <div>
-                <label className={`block text-[14px] font-medium mb-1 ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>
-                  Current BTC Price
-                </label>
-                <div className={`px-3 py-2 rounded-[12px] border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-[#D1D5DB]' : 'bg-[#F9FAFB] border-[#E5E7EB] text-[#334155]'} flex items-center justify-between opacity-75`}>
-                  <span>{assumptions.BTC_current_market_price ? `$${assumptions.BTC_current_market_price.toFixed(2)}` : 'Loading...'}</span>
-                  <span className="text-[14px]">USD</span>
-                </div>
-              </div>
+              <InputField
+                label="Current BTC Price"
+                value={assumptions.BTC_current_market_price}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, BTC_current_market_price: val }))}
+                suffix="USD"
+                tooltip="Current market price of Bitcoin"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
               <InputField
                 label="Target BTC Price"
                 value={assumptions.targetBTCPrice}
-                onChange={(val) => setAssumptions({ ...assumptions, targetBTCPrice: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, targetBTCPrice: val }))}
                 suffix="USD"
                 tooltip="Your expected Bitcoin price at the end of the time horizon"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <InputField
                 label="Issue Price"
                 value={assumptions.IssuePrice}
-                onChange={(val) => setAssumptions({ ...assumptions, IssuePrice: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, IssuePrice: val }))}
                 suffix="USD"
                 tooltip="Price at which convertible notes are issued"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
             </div>
           </div>
@@ -287,24 +464,26 @@ const AssumptionsPage = ({
               <HybridInput
                 label="Drift (μ)"
                 value={assumptions.mu}
-                onChange={(val) => setAssumptions({ ...assumptions, mu: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, mu: val }))}
                 min={0.3}
                 max={0.6}
                 step={0.01}
                 tooltip="Expected price appreciation rate of BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <HybridInput
                 label="Volatility (σ)"
                 value={assumptions.sigma}
-                onChange={(val) => setAssumptions({ ...assumptions, sigma: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, sigma: val }))}
                 min={0.4}
                 max={0.9}
                 step={0.01}
                 tooltip="Standard deviation of BTC returns"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <div>
                 <label className={`block text-[14px] font-medium mb-1 ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>
@@ -313,8 +492,9 @@ const AssumptionsPage = ({
                 </label>
                 <select
                   value={assumptions.t}
-                  onChange={(e) => setAssumptions({ ...assumptions, t: parseFloat(e.target.value) })}
+                  onChange={(e) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, t: parseFloat(e.target.value) }))}
                   className={`w-full px-3 py-2 rounded-[12px] border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
+                  disabled={mode === 'public' && lockDefaults}
                 >
                   {[1, 2, 3].map((year) => (
                     <option key={year} value={year}>{year}y</option>
@@ -324,20 +504,22 @@ const AssumptionsPage = ({
               <InputField
                 label="Risk-Free Rate"
                 value={assumptions.risk_free_rate}
-                onChange={(val) => setAssumptions({ ...assumptions, risk_free_rate: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, risk_free_rate: val }))}
                 suffix="%"
                 tooltip="Risk-free interest rate"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <InputField
                 label="Expected BTC Return"
                 value={assumptions.expected_return_btc}
-                onChange={(val) => setAssumptions({ ...assumptions, expected_return_btc: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, expected_return_btc: val }))}
                 suffix="%"
                 tooltip="Expected annual return on BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
             </div>
           </div>
@@ -349,18 +531,39 @@ const AssumptionsPage = ({
             </h3>
             <div className="space-y-4">
               <InputField
+                label="Initial Equity Value"
+                value={assumptions.initial_equity_value}
+                onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
+                suffix="USD"
+                tooltip="Fetched or parsed initial equity value from SEC filings"
+                darkMode={darkMode}
+                className="text-[14px]"
+                extraLabel={mode === 'public' && <span className="ml-2 text-[#CDA349] text-xs">[SEC]</span>}
+              />
+              <InputField
                 label="Loan Principal"
                 value={assumptions.LoanPrincipal}
                 onChange={(val) => setAssumptions({ ...assumptions, LoanPrincipal: val })}
                 suffix="USD"
-                tooltip="Principal amount of the loan"
+                tooltip="Fetched or parsed loan principal from SEC filings"
                 darkMode={darkMode}
                 className="text-[14px]"
+                extraLabel={mode === 'public' && <span className="ml-2 text-[#CDA349] text-xs">[SEC]</span>}
+              />
+              <InputField
+                label="New Equity Raised"
+                value={assumptions.new_equity_raised}
+                onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
+                suffix="USD"
+                tooltip="Fetched or parsed new equity raised from SEC filings"
+                darkMode={darkMode}
+                className="text-[14px]"
+                extraLabel={mode === 'public' && <span className="ml-2 text-[#CDA349] text-xs">[SEC]</span>}
               />
               <HybridInput
                 label="Cost of Debt"
                 value={assumptions.cost_of_debt}
-                onChange={(val) => setAssumptions({ ...assumptions, cost_of_debt: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, cost_of_debt: val }))}
                 min={0}
                 max={0.12}
                 step={0.001}
@@ -368,11 +571,12 @@ const AssumptionsPage = ({
                 tooltip="Interest rate on the loan"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <HybridInput
                 label="LTV Cap"
                 value={assumptions.LTV_Cap}
-                onChange={(val) => setAssumptions({ ...assumptions, LTV_Cap: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, LTV_Cap: val }))}
                 min={0}
                 max={0.9}
                 step={0.001}
@@ -380,35 +584,19 @@ const AssumptionsPage = ({
                 tooltip="Maximum loan-to-value ratio"
                 darkMode={darkMode}
                 className="text-[14px]"
-              />
-              <InputField
-                label="Initial Equity Value"
-                value={assumptions.initial_equity_value}
-                onChange={(val) => setAssumptions({ ...assumptions, initial_equity_value: val })}
-                suffix="USD"
-                tooltip="Initial value of equity"
-                darkMode={darkMode}
-                className="text-[14px]"
-              />
-              <InputField
-                label="New Equity Raised"
-                value={assumptions.new_equity_raised}
-                onChange={(val) => setAssumptions({ ...assumptions, new_equity_raised: val })}
-                suffix="USD"
-                tooltip="Amount of new equity raised"
-                darkMode={darkMode}
-                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <HybridInput
                 label="Beta ROE"
                 value={assumptions.beta_ROE}
-                onChange={(val) => setAssumptions({ ...assumptions, beta_ROE: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, beta_ROE: val }))}
                 min={1.0}
                 max={3.0}
                 step={0.1}
                 tooltip="Beta for return on equity"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
             </div>
           </div>
@@ -422,7 +610,7 @@ const AssumptionsPage = ({
               <HybridInput
                 label="Dilution Volatility"
                 value={assumptions.dilution_vol_estimate}
-                onChange={(val) => setAssumptions({ ...assumptions, dilution_vol_estimate: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, dilution_vol_estimate: val }))}
                 min={0}
                 max={1}
                 step={0.001}
@@ -430,94 +618,101 @@ const AssumptionsPage = ({
                 tooltip="Volatility estimate for dilution"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <HybridInput
                 label="Mean Reversion Speed"
                 value={assumptions.vol_mean_reversion_speed}
-                onChange={(val) => setAssumptions({ ...assumptions, vol_mean_reversion_speed: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, vol_mean_reversion_speed: val }))}
                 min={0.3}
                 max={0.7}
                 step={0.01}
-                tooltip="Speed of mean reversion for volatility"
+                tooltip="Speed of volatility mean reversion"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
               <HybridInput
                 label="Long-Run Volatility"
                 value={assumptions.long_run_volatility}
-                onChange={(val) => setAssumptions({ ...assumptions, long_run_volatility: val })}
-                min={0}
-                max={1}
-                step={0.001}
-                suffix="%"
-                tooltip="Long-term average volatility"
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, long_run_volatility: val }))}
+                min={0.1}
+                max={0.7}
+                step={0.01}
+                tooltip="Long-run volatility of BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
-              <div>
-                <label className={`block text-[14px] font-medium mb-1 ${darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}`}>
-                  Simulation Paths
-                  <span className="ml-1 text-[#CDA349] cursor-help" title="Number of simulation paths">ⓘ</span>
-                </label>
-                <select
-                  value={assumptions.paths}
-                  onChange={(e) => setAssumptions({ ...assumptions, paths: parseInt(e.target.value) })}
-                  className={`w-full px-3 py-2 rounded-[12px] border text-[14px] ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
-                >
-                  {[10000, 50000, 100000].map((path) => (
-                    <option key={path} value={path}>{path.toLocaleString()}</option>
-                  ))}
-                </select>
-              </div>
-              <HybridInput
+              <InputField
                 label="Jump Intensity"
                 value={assumptions.jump_intensity}
-                onChange={(val) => setAssumptions({ ...assumptions, jump_intensity: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_intensity: val }))}
                 min={0}
-                max={1}
+                max={0.5}
                 step={0.01}
-                tooltip="Intensity of jumps in BTC price"
+                tooltip="Intensity of price jumps in BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
-              <HybridInput
+              <InputField
                 label="Jump Mean"
                 value={assumptions.jump_mean}
-                onChange={(val) => setAssumptions({ ...assumptions, jump_mean: val })}
-                min={-1}
-                max={1}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_mean: val }))}
+                min={-0.5}
+                max={0.5}
                 step={0.01}
-                tooltip="Mean of jumps in BTC price"
+                tooltip="Mean of price jumps in BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
-              <HybridInput
+              <InputField
                 label="Jump Volatility"
                 value={assumptions.jump_volatility}
-                onChange={(val) => setAssumptions({ ...assumptions, jump_volatility: val })}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_volatility: val }))}
                 min={0}
-                max={1}
-                step={0.001}
-                suffix="%"
-                tooltip="Volatility of jumps in BTC price"
+                max={0.5}
+                step={0.01}
+                tooltip="Volatility of price jumps in BTC"
                 darkMode={darkMode}
                 className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+              <InputField
+                label="Min Profit Margin"
+                value={assumptions.min_profit_margin}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, min_profit_margin: val }))}
+                min={0}
+                max={0.5}
+                step={0.01}
+                suffix="%"
+                tooltip="Minimum profit margin for treasury"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
               />
             </div>
           </div>
         </div>
 
-        {/* Run Models Button */}
-        <div className="mt-6">
+        {/* Error Display */}
+        {error && (
+          <p className="text-red-500 text-[14px] mt-4 text-center">{error}</p>
+        )}
+
+        {/* Calculate Button */}
+        <div className="mt-6 flex justify-center">
           <button
             onClick={handleCalculate}
-            disabled={isCalculating || !assumptions.BTC_current_market_price}
-            className={`w-full px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] transition-colors disabled:opacity-50 flex items-center justify-center`}
+            disabled={isCalculating}
+            className={`px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors ${isCalculating ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {isCalculating ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Running ({calculationProgress}%)
+                Calculating... {calculationProgress}%
               </>
             ) : (
               <>
@@ -527,30 +722,9 @@ const AssumptionsPage = ({
             )}
           </button>
         </div>
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => setIsDocModalOpen(true)}
-            className={`px-4 py-2 rounded-[12px] text-[14px] ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-          >
-            <Info className="w-4 h-4 inline-block mr-1" />
-            Learn More
-          </button>
-        </div>
-        {error && (
-          <p className="text-red-500 text-[14px] mt-4 text-center">{error}</p>
-        )}
-        {isCalculating && (
-          <div className="mt-4 max-w-md mx-auto">
-            <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-[#374151]' : 'bg-[#E5E7EB]'}`}>
-              <div
-                className="bg-[#CDA349] h-2 rounded-full transition-all duration-300"
-                style={{ width: `${calculationProgress}%` }}
-              ></div>
-            </div>
-          </div>
-        )}
+
+        <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
       </div>
-      <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
     </div>
   );
 };
