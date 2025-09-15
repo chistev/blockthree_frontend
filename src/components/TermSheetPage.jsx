@@ -44,7 +44,7 @@ const TermSheetPage = ({
 }) => {
   const [activeTab, setActiveTab] = useState('nav_paths');
 
-  // Helper function to reuse generateScenarioPaths from App.jsx
+  // Helper function to generate scenario paths
   const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
     const scenarios = results.scenario_metrics;
     const timeSteps = 100;
@@ -275,7 +275,7 @@ const TermSheetPage = ({
           <div className="flex items-center space-x-4 mb-3 sm:mb-0">
             <button
               onClick={() => setCurrentPage('landing')}
-              className={`p-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
+              className={`p-2 rounded-[12px] text-[14px] ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
               title="Back to Home"
             >
               <Home className="w-4 h-4 inline-block mr-1" />
@@ -283,7 +283,7 @@ const TermSheetPage = ({
             </button>
             <button
               onClick={() => setCurrentPage('assumptions')}
-              className={`p-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
+              className={`p-2 rounded-[12px] text-[14px] ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
               title="Back to Assumptions"
             >
               <Sliders className="w-4 h-4 inline-block mr-1" />
@@ -296,14 +296,14 @@ const TermSheetPage = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsDocModalOpen(true)}
-              className={`px-3 py-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
+              className={`px-3 py-2 rounded-[12px] text-[14px] ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
             >
               <Info className="w-4 h-4 inline-block mr-1" />
               Learn More
             </button>
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className={`p-2 rounded-lg ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
+              className={`p-2 rounded-[12px] ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
             >
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -315,7 +315,7 @@ const TermSheetPage = ({
         {/* Left Panel: Term Sheet Summary (60%) */}
         <div className="lg:col-span-3">
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
-            <h2 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+            <h2 className={`text-[24px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
               Term Sheet Summary
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -394,13 +394,13 @@ const TermSheetPage = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-lg text-[14px] ${
+                  className={`px-4 py-2 rounded-[12px] text-[14px] font-medium ${
                     activeTab === tab.id
                       ? 'bg-[#0A1F44] text-white'
                       : darkMode
                       ? 'bg-[#374151] text-white'
                       : 'bg-[#E5E7EB] text-[#0A1F44]'
-                  }`}
+                  } hover:bg-[#1e3a8a] hover:text-white transition-colors`}
                 >
                   {tab.label}
                 </button>
@@ -411,21 +411,28 @@ const TermSheetPage = ({
         </div>
       </div>
 
-      {/* Export Buttons */}
+      {/* Export and Boardroom Buttons */}
       <div className="max-w-7xl mx-auto mt-6 flex gap-4">
         <button
           onClick={() => handleExport('csv')}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center`}
+          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
         >
           <Download className="w-4 h-4 mr-2" />
           Export CSV
         </button>
         <button
           onClick={() => handleExport('pdf')}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center`}
+          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
         >
           <FileText className="w-4 h-4 mr-2" />
           Export PDF
+        </button>
+        <button
+          onClick={() => setCurrentPage('boardroom')}
+          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
+        >
+          <Briefcase className="w-4 h-4 mr-2" />
+          Boardroom Mode
         </button>
       </div>
 
