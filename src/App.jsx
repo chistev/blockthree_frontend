@@ -38,35 +38,24 @@ import {
   Legend,
 } from 'recharts';
 
-// Constants for default assumptions
-const DEFAULT_ASSUMPTIONS = {
-  BTC_treasury: 1000,
-  BTC_purchased: 0,
-  BTC_current_market_price: null,
-  targetBTCPrice: 117000,
-  mu: 0.45,
-  sigma: 0.55,
-  t: 1.0,
-  delta: 0.08,
-  initial_equity_value: 90000000,
-  new_equity_raised: 5000000,
-  IssuePrice: 117000,
-  LoanPrincipal: 25000000,
-  cost_of_debt: 0.06,
-  dilution_vol_estimate: 0.55,
-  LTV_Cap: 0.5,
-  beta_ROE: 2.5,
-  expected_return_btc: 0.45,
-  risk_free_rate: 0.04,
-  vol_mean_reversion_speed: 0.5,
-  long_run_volatility: 0.5,
-  paths: 10000,
-  jump_intensity: 0.1,
-  jump_mean: 0.0,
-  jump_volatility: 0.2,
+// API Utilities
+const fetchDefaultParams = async (setAssumptions, setError) => {
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/default_params/', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    setAssumptions(data);
+    return data;
+  } catch (err) {
+    console.error('Failed to fetch default parameters:', err);
+    setError('Failed to fetch default parameters. Using fallback values.');
+    return null;
+  }
 };
 
-// API Utilities
 const fetchBTCPrice = async (setAssumptions, setError) => {
   try {
     const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
@@ -86,8 +75,8 @@ const fetchBTCPrice = async (setAssumptions, setError) => {
     setError('Failed to fetch live BTC price. Using default value.');
     setAssumptions((prev) => ({
       ...prev,
-      BTC_current_market_price: 117000,
-      targetBTCPrice: 117000,
+      BTC_current_market_price: prev.BTC_current_market_price || 117000,
+      targetBTCPrice: prev.targetBTCPrice || 117000,
     }));
   }
 };
@@ -164,7 +153,7 @@ const App = () => {
   const [error, setError] = useState(null);
   const [selectedParam, setSelectedParam] = useState('');
   const [paramValue, setParamValue] = useState('');
-  const [assumptions, setAssumptions] = useState(DEFAULT_ASSUMPTIONS);
+  const [assumptions, setAssumptions] = useState({}); // Initialize empty, to be set by API
   const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
@@ -172,7 +161,13 @@ const App = () => {
   const [ticker, setTicker] = useState('');
 
   useEffect(() => {
-    fetchBTCPrice(setAssumptions, setError);
+    const initializeAssumptions = async () => {
+      const defaultParams = await fetchDefaultParams(setAssumptions, setError);
+      if (defaultParams) {
+        await fetchBTCPrice(setAssumptions, setError);
+      }
+    };
+    initializeAssumptions();
   }, []);
 
   const handleAPIRequest = async (endpoint, body, setLoading, errorMessage) => {
@@ -469,7 +464,7 @@ const App = () => {
                   className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'}`}
                 >
                   <option value="">Select Parameter</option>
-                  {Object.keys(DEFAULT_ASSUMPTIONS).map((key) => (
+                  {Object.keys(assumptions).map((key) => (
                     <option key={key} value={key}>{key}</option>
                   ))}
                 </select>
@@ -626,88 +621,88 @@ const App = () => {
   };
 
   return (
-  <>
-    {currentPage === 'landing' && (
-      <LandingPage
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-      />
-    )}
-    {currentPage === 'assumptions' && (
-      <AssumptionsPage
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-        assumptions={assumptions}
-        setAssumptions={setAssumptions}
-        savedConfigs={savedConfigs}
-        setSavedConfigs={setSavedConfigs}
-        isCalculating={isCalculating}
-        calculationProgress={calculationProgress}
-        setIsDocModalOpen={setIsDocModalOpen}
-        isDocModalOpen={isDocModalOpen}
-        error={error}
-        setError={setError}
-        ticker={ticker}
-        setTicker={setTicker}
-        mode={mode}
-        setMode={setMode}
-        handleCalculate={handleCalculate}
-      />
-    )}
-    {currentPage === 'runModels' && results && (
-      <RunModelsPage
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-        results={results}
-        assumptions={assumptions}
-        isCalculating={isCalculating}
-        calculationProgress={calculationProgress}
-        setIsDocModalOpen={setIsDocModalOpen}
-        isDocModalOpen={isDocModalOpen}
-        error={error}
-      />
-    )}
-    {currentPage === 'dashboard' && results && <DashboardPage />}
-    {currentPage === 'decision' && results && (
-      <DecisionView
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-        results={results}
-        assumptions={assumptions}
-        setIsDocModalOpen={setIsDocModalOpen}
-        isDocModalOpen={isDocModalOpen}
-      />
-    )}
-    {currentPage === 'termSheet' && results && (
-      <TermSheetPage
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-        results={results}
-        assumptions={assumptions}
-        setIsDocModalOpen={setIsDocModalOpen}
-        isDocModalOpen={isDocModalOpen}
-        error={error}
-        handleExport={handleExport}
-      />
-    )}
-    {currentPage === 'boardroom' && results && (
-      <BoardroomPage
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        setCurrentPage={setCurrentPage}
-        results={results}
-        assumptions={assumptions}
-        setIsDocModalOpen={setIsDocModalOpen}
-        isDocModalOpen={isDocModalOpen}
-      />
-    )}
-  </>
-);
+    <>
+      {currentPage === 'landing' && (
+        <LandingPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+        />
+      )}
+      {currentPage === 'assumptions' && (
+        <AssumptionsPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          assumptions={assumptions}
+          setAssumptions={setAssumptions}
+          savedConfigs={savedConfigs}
+          setSavedConfigs={setSavedConfigs}
+          isCalculating={isCalculating}
+          calculationProgress={calculationProgress}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+          error={error}
+          setError={setError}
+          ticker={ticker}
+          setTicker={setTicker}
+          mode={mode}
+          setMode={setMode}
+          handleCalculate={handleCalculate}
+        />
+      )}
+      {currentPage === 'runModels' && results && (
+        <RunModelsPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          isCalculating={isCalculating}
+          calculationProgress={calculationProgress}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+          error={error}
+        />
+      )}
+      {currentPage === 'dashboard' && results && <DashboardPage />}
+      {currentPage === 'decision' && results && (
+        <DecisionView
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+        />
+      )}
+      {currentPage === 'termSheet' && results && (
+        <TermSheetPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+          error={error}
+          handleExport={handleExport}
+        />
+      )}
+      {currentPage === 'boardroom' && results && (
+        <BoardroomPage
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          setCurrentPage={setCurrentPage}
+          results={results}
+          assumptions={assumptions}
+          setIsDocModalOpen={setIsDocModalOpen}
+          isDocModalOpen={isDocModalOpen}
+        />
+      )}
+    </>
+  );
 };
 
 export default App;

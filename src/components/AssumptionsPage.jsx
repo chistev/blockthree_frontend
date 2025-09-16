@@ -4,34 +4,6 @@ import InputField from './InputField';
 import DocumentationModal from './DocumentationModal';
 import { Home, Sun, Moon, Upload, Save, Folder, Trash2, Calculator } from 'lucide-react';
 
-// Default parameters aligned with backend DEFAULT_PARAMS
-const DEFAULT_PARAMS = {
-  BTC_treasury: 1000,
-  BTC_purchased: 0,
-  BTC_current_market_price: 115500,
-  targetBTCPrice: 115500,
-  mu: 0.45,
-  sigma: 0.55,
-  t: 1,
-  delta: 0.08,
-  initial_equity_value: 90000000,
-  new_equity_raised: 5000000,
-  IssuePrice: 115500,
-  LoanPrincipal: 25000000,
-  cost_of_debt: 0.06,
-  dilution_vol_estimate: 0.55,
-  LTV_Cap: 0.5,
-  beta_ROE: 2.5,
-  expected_return_btc: 0.45,
-  risk_free_rate: 0.04,
-  vol_mean_reversion_speed: 0.5,
-  long_run_volatility: 0.5,
-  paths: 10000,
-  jump_intensity: 0.1,
-  jump_mean: 0.0,
-  jump_volatility: 0.2,
-};
-
 const AssumptionsPage = ({
   darkMode,
   setDarkMode,
@@ -57,7 +29,6 @@ const AssumptionsPage = ({
   const [localSavedConfigs, setLocalSavedConfigs] = useState(savedConfigs);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [lockDefaults, setLockDefaults] = useState(true);
-  // New state for success feedback
   const [successMessage, setSuccessMessage] = useState(null);
 
   // Sync localSavedConfigs with savedConfigs
@@ -70,7 +41,7 @@ const AssumptionsPage = ({
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(null);
-      }, 5000); // 5 seconds
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
@@ -88,7 +59,7 @@ const AssumptionsPage = ({
               ...prev,
               BTC_current_market_price: data.BTC_current_market_price,
               targetBTCPrice:
-                prev.targetBTCPrice === DEFAULT_PARAMS.targetBTCPrice
+                prev.targetBTCPrice === prev.BTC_current_market_price
                   ? data.BTC_current_market_price
                   : prev.targetBTCPrice,
             }));
@@ -182,7 +153,7 @@ const AssumptionsPage = ({
 
     setIsFetchingData(true);
     setError(null);
-    setSuccessMessage(null); // Clear success message
+    setSuccessMessage(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -225,7 +196,7 @@ const AssumptionsPage = ({
 
     setIsFetchingData(true);
     setError(null);
-    setSuccessMessage(null); // Clear previous success message
+    setSuccessMessage(null);
 
     try {
       const response = await fetch('http://127.0.0.1:8000/api/fetch_sec_data/', {
@@ -251,7 +222,7 @@ const AssumptionsPage = ({
         new_equity_raised: data.new_equity_raised || prev.new_equity_raised,
       }));
       setError(null);
-      setSuccessMessage(`Successfully fetched SEC data for ticker ${ticker}.`); // Set success message
+      setSuccessMessage(`Successfully fetched SEC data for ticker ${ticker}.`);
     } catch (err) {
       console.error('Failed to fetch SEC data:', err);
       setError('Failed to fetch SEC data. Please check the ticker symbol.');
