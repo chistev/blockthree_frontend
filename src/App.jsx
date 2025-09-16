@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import DocumentationModal from './components/DocumentationModal';
-import MetricCard from './components/MetricCard';
 import { mapResults } from './components/mapResults';
 import LandingPage from './components/LandingPage';
 import AssumptionsPage from './components/AssumptionsPage';
@@ -9,34 +7,6 @@ import DecisionView from './components/DecisionView';
 import TermSheetPage from './components/TermSheetPage';
 import BoardroomPage from './components/BoardroomPage';
 import './index.css';
-import {
-  TrendingDown,
-  Calculator,
-  Shield,
-  DollarSign,
-  Target,
-  AlertTriangle,
-  Moon,
-  Sun,
-  Briefcase,
-  Sliders,
-  Home,
-  Download,
-  FileText,
-  Info,
-} from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  Legend,
-} from 'recharts';
 
 // API Utilities
 const fetchDefaultParams = async (setAssumptions, setError) => {
@@ -101,37 +71,6 @@ const validateWhatIfInput = (param, value, setError) => {
   return true;
 };
 
-const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
-  const scenarios = results.scenario_metrics;
-  const timeSteps = 100;
-  const paths = {};
-
-  Object.entries(scenarios).forEach(([scenarioName, metrics]) => {
-    const path = [];
-    const initialBTCPrice = assumptions.BTC_current_market_price;
-    const finalBTCPrice = metrics.btc_price;
-    const totalBTC = assumptions.BTC_treasury + assumptions.BTC_purchased;
-
-    for (let i = 0; i <= timeSteps; i++) {
-      const t = i / timeSteps;
-      const interpolatedPrice = initialBTCPrice + t * (finalBTCPrice - initialBTCPrice);
-
-      if (metricType === 'nav') {
-        const collateralValue = totalBTC * interpolatedPrice;
-        const nav = (collateralValue + collateralValue * assumptions.delta - assumptions.LoanPrincipal * assumptions.cost_of_debt) /
-          (assumptions.initial_equity_value + assumptions.new_equity_raised);
-        path.push({ time: t, value: nav });
-      } else if (metricType === 'ltv') {
-        const ltv = assumptions.LoanPrincipal / (totalBTC * interpolatedPrice);
-        path.push({ time: t, value: ltv });
-      }
-    }
-    paths[scenarioName] = path;
-  });
-
-  return paths;
-};
-
 const getSavedConfigurations = () => {
   try {
     return JSON.parse(localStorage.getItem('savedConfigs') || '{}');
@@ -146,13 +85,7 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState(0);
-  const [bespokePanelOpen, setBespokePanelOpen] = useState(false);
-  const [isWhatIfLoading, setIsWhatIfLoading] = useState(false);
-  const [isExportLoading, setIsExportLoading] = useState(false);
-  const [exportType, setExportType] = useState(null);
   const [error, setError] = useState(null);
-  const [selectedParam, setSelectedParam] = useState('');
-  const [paramValue, setParamValue] = useState('');
   const [assumptions, setAssumptions] = useState({}); // Initialize empty, to be set by API
   const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -217,24 +150,6 @@ const App = () => {
     }
   };
 
-  const handleWhatIf = async (param, value) => {
-    if (!validateWhatIfInput(param, value, setError)) return;
-    setIsWhatIfLoading(true);
-    setError(null);
-
-    try {
-      const backendResults = await handleAPIRequest(
-        '/api/what_if/',
-        { param, value, assumptions, format: 'json', use_live: true },
-        setIsWhatIfLoading,
-        'What-If analysis failed. Please try again.'
-      );
-      setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
-    } catch (err) {
-      // Error handled in handleAPIRequest
-    }
-  };
-
   const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
     if (param && value && !validateWhatIfInput(param, value, setError)) return;
 
@@ -273,351 +188,6 @@ const App = () => {
         setExportType(null);
       }, 500);
     }
-  };
-
-  const DashboardPage = () => {
-    const [selectedMetric, setSelectedMetric] = useState('nav');
-    const [visibleScenarios, setVisibleScenarios] = useState({
-      'Bull Case': true,
-      'Base Case': true,
-      'Bear Case': true,
-      'Stress Test': true,
-    });
-
-    const scenarioPaths = generateScenarioPaths(results, assumptions, selectedMetric);
-
-    const colors = {
-      'Bull Case': '#10b981',
-      'Base Case': '#3b82f6',
-      'Bear Case': '#ef4444',
-      'Stress Test': '#CDA349',
-    };
-
-    return (
-      <div className={`min-h-screen ${darkMode ? 'bg-[#111827]' : 'bg-[#F9FAFB]'} font-inter`}>
-        <nav className={`px-4 sm:px-8 py-3 border-b ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'}`}>
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
-            <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-              <button
-                onClick={() => setCurrentPage('landing')}
-                className={`p-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-                title="Back to Home"
-              >
-                <Home className="w-4 h-4 inline-block mr-1" />
-                Home
-              </button>
-              <button
-                onClick={() => setCurrentPage('assumptions')}
-                className={`p-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-                title="Back to Assumptions"
-              >
-                <Sliders className="w-4 h-4 inline-block mr-1" />
-                Assumptions
-              </button>
-              <h1 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                Risk Dashboard
-              </h1>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setBespokePanelOpen(!bespokePanelOpen)}
-                className={`px-3 py-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-              >
-                <Sliders className="w-4 h-4 inline-block mr-1" />
-                Bespoke Mode
-              </button>
-              <button
-                onClick={() => handleExport('csv')}
-                disabled={isExportLoading}
-                className={`px-3 py-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#D1D5DB]'}`}
-              >
-                {isExportLoading && exportType === 'CSV' ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 inline-block mr-1" />
-                    Export CSV
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => handleExport('pdf')}
-                disabled={isExportLoading}
-                className={`px-3 py-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'} ${isExportLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#D1D5DB]'}`}
-              >
-                {isExportLoading && exportType === 'PDF' ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="w-4 h-4 inline-block mr-1" />
-                    Export PDF
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setIsDocModalOpen(true)}
-                className={`px-3 py-2 rounded-lg text-sm ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-              >
-                <Info className="w-4 h-4 inline-block mr-1" />
-                Learn More
-              </button>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-lg ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-              >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-        </nav>
-
-        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-          {isExportLoading && (
-            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-              <div className={`p-6 rounded-lg ${darkMode ? 'bg-[#1F2937] text-white' : 'bg-white text-[#0A1F44]'} shadow-lg flex items-center space-x-3`}>
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-[#CDA349] border-t-transparent"></div>
-                <p className="text-sm">Preparing {exportType} for download...</p>
-              </div>
-            </div>
-          )}
-          {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {[
-              {
-                title: "Total BTC Portfolio Value",
-                value: results.btc_portfolio_value,
-                description: "Raw value of BTC holdings",
-                tooltip: "Calculated as BTC Treasury Quantity × Current BTC Price.",
-                icon: DollarSign,
-                format: "currency"
-              },
-              {
-                title: "Bundle Value",
-                value: results.preferred_bundle.bundle_value,
-                description: "Weighted value of NAV, dilution, and convertible note",
-                tooltip: "Calculated as (0.4 × NAV + 0.3 × Dilution + 0.3 × Convertible Note Value) × (1 - 20% Tax).",
-                icon: Briefcase,
-                format: "currency"
-              },
-              {
-                title: "NAV Erosion Risk",
-                value: results.nav.erosion_prob,
-                description: "Probability NAV falls below 90% of average",
-                tooltip: "Likelihood that NAV drops below 90% of its average value across simulations.",
-                icon: Shield,
-                format: "percentage"
-              },
-              {
-                title: "LTV Exceedance",
-                value: results.ltv.exceed_prob,
-                description: "Probability LTV exceeds cap",
-                tooltip: "Likelihood that the Loan-to-Value ratio exceeds the LTV Cap.",
-                icon: AlertTriangle,
-                format: "percentage"
-              },
-              {
-                title: "Expected ROE",
-                value: results.roe.avg_roe,
-                description: "Expected Return on Equity",
-                tooltip: "Calculated using CAPM, adjusted for BTC volatility and beta.",
-                icon: Target,
-                format: "percentage"
-              },
-              {
-                title: "Dilution Risk",
-                value: results.dilution.base_dilution,
-                description: `Structure: ${results.dilution.structure_threshold_breached ? 'BTC-Collateralized Loan' : 'Convertible Note'}`,
-                tooltip: "Dilution impact from new equity, adjusted by NAV paths and volatility.",
-                icon: TrendingDown,
-                format: "percentage"
-              },
-            ].map(({ title, value, description, tooltip, icon, format }) => (
-              <MetricCard
-                key={title}
-                title={title}
-                value={value}
-                description={description}
-                tooltip={tooltip}
-                icon={icon}
-                format={format}
-                darkMode={darkMode}
-              />
-            ))}
-          </div>
-
-          {/* Bespoke Mode Panel */}
-          {bespokePanelOpen && (
-            <div className={`p-4 rounded-xl border mb-6 ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-sm`}>
-              <h3 className={`text-lg font-medium mb-3 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                Bespoke What-If Analysis
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <select
-                  value={selectedParam}
-                  onChange={(e) => setSelectedParam(e.target.value)}
-                  className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'}`}
-                >
-                  <option value="">Select Parameter</option>
-                  {Object.keys(assumptions).map((key) => (
-                    <option key={key} value={key}>{key}</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  value={paramValue}
-                  onChange={(e) => setParamValue(e.target.value)}
-                  placeholder="Enter value"
-                  className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-[#1F2937] border-[#374151] text-white' : 'bg-white border-[#E5E7EB] text-[#0A1F44]'} focus:outline-none focus:ring-2 focus:ring-[#CDA349]`}
-                />
-                <button
-                  onClick={() => handleWhatIf(selectedParam, parseFloat(paramValue))}
-                  disabled={!selectedParam || !paramValue || isWhatIfLoading}
-                  className={`px-4 py-2 bg-[#0A1F44] text-white rounded-lg text-sm hover:bg-[#1e3a8a] ${(!selectedParam || !paramValue || isWhatIfLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isWhatIfLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2 inline-block"></div>
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Calculator className="w-4 h-4 inline-block mr-1" />
-                      Run What-If
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Scenario Controls */}
-          <div className={`p-4 rounded-xl border mb-6 ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-sm`}>
-            <h3 className={`text-lg font-medium mb-3 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-              Scenario Analysis
-            </h3>
-            <div className="flex flex-wrap gap-4 mb-4">
-              {Object.keys(visibleScenarios).map((scenario) => (
-                <label key={scenario} className="flex items-center space-x-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={visibleScenarios[scenario]}
-                    onChange={() => setVisibleScenarios({ ...visibleScenarios, [scenario]: !visibleScenarios[scenario] })}
-                    className="rounded text-[#CDA349] focus:ring-[#CDA349]"
-                  />
-                  <span className={darkMode ? 'text-[#D1D5DB]' : 'text-[#334155]'}>{scenario}</span>
-                </label>
-              ))}
-            </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setSelectedMetric('nav')}
-                className={`px-4 py-2 rounded-lg text-sm ${selectedMetric === 'nav' ? 'bg-[#0A1F44] text-white' : darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-              >
-                NAV
-              </button>
-              <button
-                onClick={() => setSelectedMetric('ltv')}
-                className={`px-4 py-2 rounded-lg text-sm ${selectedMetric === 'ltv' ? 'bg-[#0A1F44] text-white' : darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-              >
-                LTV
-              </button>
-            </div>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-sm`}>
-              <h3 className={`text-lg font-medium mb-3 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                {selectedMetric === 'nav' ? 'NAV Path Scenarios' : 'LTV Path Scenarios'}
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                    <XAxis dataKey="time" tickFormatter={(t) => `${(t * 100).toFixed(0)}%`} stroke={darkMode ? '#D1D5DB' : '#334155'} />
-                    <YAxis
-                      domain={selectedMetric === 'nav' ? [0, 'auto'] : [0, 1]}
-                      tickFormatter={(v) => selectedMetric === 'nav' ? v.toFixed(2) : `${(v * 100).toFixed(1)}%`}
-                      stroke={darkMode ? '#D1D5DB' : '#334155'}
-                    />
-                    <Tooltip
-                      formatter={(value) => selectedMetric === 'nav' ? value.toFixed(2) : `${(value * 100).toFixed(1)}%`}
-                      labelFormatter={(label) => `Time: ${(label * 100).toFixed(0)}%`}
-                      contentStyle={darkMode ? { backgroundColor: '#1F2937', border: '1px solid #374151' } : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }}
-                    />
-                    <Legend />
-                    {Object.keys(scenarioPaths).map((scenario) => (
-                      visibleScenarios[scenario] && (
-                        <Line
-                          key={scenario}
-                          type="monotone"
-                          dataKey="value"
-                          data={scenarioPaths[scenario]}
-                          name={scenario}
-                          stroke={colors[scenario]}
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      )
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className={`p-4 rounded-xl border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-sm`}>
-              <h3 className={`text-lg font-medium mb-3 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                Scenario Distribution
-              </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                    <XAxis dataKey="time" tickFormatter={(t) => `${(t * 100).toFixed(0)}%`} stroke={darkMode ? '#D1D5DB' : '#334155'} />
-                    <YAxis
-                      domain={selectedMetric === 'nav' ? [0, 'auto'] : [0, 1]}
-                      tickFormatter={(v) => selectedMetric === 'nav' ? v.toFixed(2) : `${(v * 100).toFixed(1)}%`}
-                      stroke={darkMode ? '#D1D5DB' : '#334155'}
-                    />
-                    <Tooltip
-                      formatter={(value) => selectedMetric === 'nav' ? value.toFixed(2) : `${(value * 100).toFixed(1)}%`}
-                      labelFormatter={(label) => `Time: ${(label * 100).toFixed(0)}%`}
-                      contentStyle={darkMode ? { backgroundColor: '#1F2937', border: '1px solid #374151' } : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }}
-                    />
-                    <Legend />
-                    {Object.keys(scenarioPaths).map((scenario) => (
-                      visibleScenarios[scenario] && (
-                        <Area
-                          key={scenario}
-                          type="monotone"
-                          dataKey="value"
-                          data={scenarioPaths[scenario]}
-                          name={scenario}
-                          stroke={colors[scenario]}
-                          fill={colors[scenario]}
-                          fillOpacity={0.2}
-                          strokeWidth={2}
-                        />
-                      )
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-        <DocumentationModal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} darkMode={darkMode} />
-      </div>
-    );
   };
 
   return (
@@ -665,7 +235,6 @@ const App = () => {
           error={error}
         />
       )}
-      {currentPage === 'dashboard' && results && <DashboardPage />}
       {currentPage === 'decision' && results && (
         <DecisionView
           darkMode={darkMode}
