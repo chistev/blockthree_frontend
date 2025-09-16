@@ -31,13 +31,13 @@ const DecisionView = ({
   setIsDocModalOpen,
   isDocModalOpen,
 }) => {
-  // Use server-provided dilution and runway metrics
+  // Use server-provided dilution, runway, and LTV breach probabilities
   const options = [
     {
       id: 'option1',
       title: 'BTC-Backed Loan',
       dilution: results.dilution.avg_btc_loan_dilution,
-      ltvRisk: results.ltv.exceed_prob,
+      ltvRisk: results.ltv.exceed_prob_btc_loan, // Use server-provided value
       roe: results.roe.avg_roe,
       runway: results.runway.btc_loan_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
@@ -49,8 +49,8 @@ const DecisionView = ({
       id: 'option2',
       title: 'Convertible Note',
       dilution: results.dilution.avg_convertible_dilution,
-      ltvRisk: results.ltv.exceed_prob * 0.8,
-      roe: results.roe.avg_roe * 0.95,
+      ltvRisk: results.ltv.exceed_prob_convertible, // Use server-provided value
+      roe: results.roe.avg_roe * 0.95, // Retain adjustment for ROE if still applicable
       runway: results.runway.convertible_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
@@ -61,8 +61,8 @@ const DecisionView = ({
       id: 'option3',
       title: 'Hybrid Structure',
       dilution: results.dilution.avg_hybrid_dilution,
-      ltvRisk: results.ltv.exceed_prob * 1.2,
-      roe: results.roe.avg_roe * 1.05,
+      ltvRisk: results.ltv.exceed_prob_hybrid, // Use server-provided value
+      roe: results.roe.avg_roe * 1.05, // Retain adjustment for ROE if still applicable
       runway: results.runway.hybrid_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
@@ -71,12 +71,12 @@ const DecisionView = ({
     },
   ];
 
-  // Update scatterData to use structure-specific runways
+  // Update scatterData to use structure-specific runways and LTV risks
   const scatterData = options.map((opt) => ({
     name: opt.title,
     dilution: opt.dilution * 100, // Convert to percentage
     runway: opt.runway, // Use the structure-specific runway
-    ltvRisk: opt.ltvRisk * 100, // For bubble size
+    ltvRisk: opt.ltvRisk * 100, // Use server-provided LTV risk, convert to percentage
   }));
 
   return (

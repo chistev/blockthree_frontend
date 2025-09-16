@@ -65,6 +65,9 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   ltv: {
     avg_ltv: backendResults.ltv.avg_ltv,
     exceed_prob: backendResults.ltv.exceed_prob,
+    exceed_prob_btc_loan: backendResults.ltv.exceed_prob_btc_loan,
+    exceed_prob_convertible: backendResults.ltv.exceed_prob_convertible,
+    exceed_prob_hybrid: backendResults.ltv.exceed_prob_hybrid,
     ltv_distribution: processLTVPaths(backendResults.ltv.ltv_paths),
   },
   roe: {
