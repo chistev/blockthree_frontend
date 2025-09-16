@@ -31,15 +31,15 @@ const DecisionView = ({
   setIsDocModalOpen,
   isDocModalOpen,
 }) => {
-  // Use server-provided dilution, runway, and LTV breach probabilities
+  // Use server-provided ROE values for each structure
   const options = [
     {
       id: 'option1',
       title: 'BTC-Backed Loan',
       dilution: results.dilution.avg_btc_loan_dilution,
-      ltvRisk: results.ltv.exceed_prob_btc_loan, // Use server-provided value
-      roe: results.roe.avg_roe,
-      runway: results.runway.btc_loan_runway_months, // Use server-provided runway
+      ltvRisk: results.ltv.exceed_prob_btc_loan,
+      roe: results.roe.avg_roe_btc_loan, // Use server-provided ROE
+      runway: results.runway.btc_loan_runway_months,
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
         value: point.value,
@@ -49,34 +49,33 @@ const DecisionView = ({
       id: 'option2',
       title: 'Convertible Note',
       dilution: results.dilution.avg_convertible_dilution,
-      ltvRisk: results.ltv.exceed_prob_convertible, // Use server-provided value
-      roe: results.roe.avg_roe * 0.95, // Retain adjustment for ROE if still applicable
-      runway: results.runway.convertible_runway_months, // Use server-provided runway
+      ltvRisk: results.ltv.exceed_prob_convertible,
+      roe: results.roe.avg_roe_convertible, // Use server-provided ROE
+      runway: results.runway.convertible_runway_months,
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
-        value: point.value * 0.95,
+        value: point.value, // Remove artificial adjustment
       })),
     },
     {
       id: 'option3',
       title: 'Hybrid Structure',
       dilution: results.dilution.avg_hybrid_dilution,
-      ltvRisk: results.ltv.exceed_prob_hybrid, // Use server-provided value
-      roe: results.roe.avg_roe * 1.05, // Retain adjustment for ROE if still applicable
-      runway: results.runway.hybrid_runway_months, // Use server-provided runway
+      ltvRisk: results.ltv.exceed_prob_hybrid,
+      roe: results.roe.avg_roe_hybrid, // Use server-provided ROE
+      runway: results.runway.hybrid_runway_months,
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
-        value: point.value * 1.05,
+        value: point.value, // Remove artificial adjustment
       })),
     },
   ];
 
-  // Update scatterData to use structure-specific runways and LTV risks
   const scatterData = options.map((opt) => ({
     name: opt.title,
     dilution: opt.dilution * 100, // Convert to percentage
-    runway: opt.runway, // Use the structure-specific runway
-    ltvRisk: opt.ltvRisk * 100, // Use server-provided LTV risk, convert to percentage
+    runway: opt.runway,
+    ltvRisk: opt.ltvRisk * 100, // Convert to percentage
   }));
 
   return (
@@ -170,13 +169,12 @@ const DecisionView = ({
                   title="Expected ROE"
                   value={option.roe}
                   description="Return on Equity"
-                  tooltip="Calculated using CAPM, adjusted for BTC volatility and beta"
+                  tooltip="Calculated using CAPM, adjusted for BTC volatility and structure-specific leverage and dilution"
                   icon={Target}
                   format="percentage"
                   darkMode={darkMode}
                 />
               </div>
-              {/* Sparkline Chart */}
               <div className="h-24 mb-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={option.sparklineData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -200,7 +198,6 @@ const DecisionView = ({
           ))}
         </div>
 
-        {/* Comparative Frontier Chart */}
         <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
           <h2 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
             Comparative Frontier

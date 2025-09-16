@@ -43,6 +43,7 @@ const processLTVPaths = (ltv_paths) => {
 };
 
 // Map backend results to frontend format
+// mapResults.jsx (unchanged, included for reference)
 const mapResults = (backendResults, btc_treasury, btc_current_market_price) => ({
   nav: {
     avg_nav: backendResults.nav.avg_nav,
@@ -72,6 +73,18 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   },
   roe: {
     avg_roe: backendResults.roe.avg_roe,
+    avg_roe_btc_loan: backendResults.roe.avg_roe_btc_loan, // New field
+    avg_roe_convertible: backendResults.roe.avg_roe_convertible, // New field
+    avg_roe_hybrid: backendResults.roe.avg_roe_hybrid, // New field
+    ci_lower: backendResults.roe.ci_lower,
+    ci_upper: backendResults.roe.ci_upper,
+    ci_lower_btc_loan: backendResults.roe.ci_lower_btc_loan, // New field
+    ci_upper_btc_loan: backendResults.roe.ci_upper_btc_loan, // New field
+    ci_lower_convertible: backendResults.roe.ci_lower_convertible, // New field
+    ci_upper_convertible: backendResults.roe.ci_upper_convertible, // New field
+    ci_lower_hybrid: backendResults.roe.ci_lower_hybrid, // New field
+    ci_upper_hybrid: backendResults.roe.ci_upper_hybrid, // New field
+    sharpe: backendResults.roe.sharpe,
   },
   preferred_bundle: {
     bundle_value: backendResults.preferred_bundle.bundle_value,
