@@ -114,7 +114,7 @@ const RunModelsPage = ({
                                 ${(results?.btc_portfolio_value / 1000000).toFixed(1)}M
                             </p>
                             <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                                BTC Holdings Value
+                                Projected BTC Holdings Value
                             </p>
                         </div>
                         <div className="text-center">

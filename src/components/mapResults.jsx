@@ -72,7 +72,8 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   preferred_bundle: {
     bundle_value: backendResults.preferred_bundle.bundle_value,
   },
-  btc_portfolio_value: btc_treasury * btc_current_market_price,
+  btc_portfolio_value: backendResults.btc_holdings?.total_value || 
+                    (btc_treasury * btc_current_market_price),
   target_metrics: {
     target_nav: backendResults.target_metrics.target_nav,
     target_ltv: backendResults.target_metrics.target_ltv,

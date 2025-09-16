@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 
 const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "", tooltip = "", darkMode }) => {
-  const [localValue, setLocalValue] = useState(value.toString());
-  const [sliderValue, setSliderValue] = useState(value);
+  // Use a fallback value if `value` is undefined
+  const [localValue, setLocalValue] = useState(value != null ? value.toString() : '');
+  const [sliderValue, setSliderValue] = useState(value != null ? value : min || 0);
 
   useEffect(() => {
-    setLocalValue(value.toString());
-    setSliderValue(value);
-  }, [value]);
+    // Update local state when `value` changes, with fallback
+    setLocalValue(value != null ? value.toString() : '');
+    setSliderValue(value != null ? value : min || 0);
+  }, [value, min]);
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -20,7 +22,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
   const handleInputBlur = () => {
     let parsed = parseFloat(localValue);
     if (isNaN(parsed)) {
-      parsed = value; // Revert to current value if invalid
+      parsed = value != null ? value : min || 0; // Revert to current value or fallback
     }
     
     // Update both the value and slider
@@ -37,6 +39,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
 
   // Format display value based on suffix
   const formatDisplayValue = (val) => {
+    if (val == null) return ''; // Handle null/undefined case
     if (suffix === "%") {
       return (val * 100).toFixed(1);
     }
@@ -45,6 +48,7 @@ const HybridInput = ({ label, value, onChange, min, max, step = 0.01, suffix = "
 
   // Format slider bounds for display
   const formatBoundValue = (val) => {
+    if (val == null) return ''; // Handle null/undefined case
     if (suffix === "%") {
       return (val * 100).toFixed(1);
     }
