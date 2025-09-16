@@ -26,31 +26,39 @@ const fetchDefaultParams = async (setAssumptions, setError) => {
   }
 };
 
-const fetchBTCPrice = async (setAssumptions, setError) => {
-  try {
-    const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    if (!data.BTC_current_market_price) throw new Error('No BTC price in response');
-    setAssumptions((prev) => ({
-      ...prev,
-      BTC_current_market_price: data.BTC_current_market_price,
-      targetBTCPrice: data.BTC_current_market_price,
-    }));
-  } catch (err) {
-    console.error('Failed to fetch BTC price:', err);
-    setError('Failed to fetch live BTC price. Using default value.');
-    setAssumptions((prev) => ({
-      ...prev,
-      BTC_current_market_price: prev.BTC_current_market_price || 117000,
-      targetBTCPrice: prev.targetBTCPrice || 117000,
-    }));
+const fetchBTCPrice = async (setAssumptions, setError, retries = 3, delay = 1000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (!data.BTC_current_market_price) throw new Error('No BTC price in response');
+      setAssumptions((prev) => ({
+        ...prev,
+        BTC_current_market_price: data.BTC_current_market_price,
+        targetBTCPrice: data.BTC_current_market_price,
+      }));
+      return; // Success, exit the function
+    } catch (err) {
+      console.error(`Attempt ${attempt} failed to fetch BTC price:`, err);
+      if (attempt === retries) {
+        // Last attempt failed, set error and fallback values
+        setError('Failed to fetch live BTC price after multiple attempts. Using default value.');
+        setAssumptions((prev) => ({
+          ...prev,
+          BTC_current_market_price: prev.BTC_current_market_price || 117000,
+          targetBTCPrice: prev.targetBTCPrice || 117000,
+        }));
+        return;
+      }
+      // Wait before retrying (exponential backoff: 1s, 2s, 4s)
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt - 1)));
+    }
   }
 };
-
 const validateWhatIfInput = (param, value, setError) => {
   if (['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'initial_equity_value', 'IssuePrice', 'LoanPrincipal'].includes(param) && value <= 0) {
     setError(`${param} must be positive`);
