@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Home,
   Sliders,
@@ -33,12 +32,12 @@ const DecisionView = ({
   setIsDocModalOpen,
   isDocModalOpen,
 }) => {
-  // Sample option data (since backend doesn't provide explicit options, we derive from scenario_metrics)
+  // Use server-provided dilution metrics
   const options = [
     {
       id: 'option1',
       title: 'BTC-Backed Loan',
-      dilution: results.dilution.base_dilution,
+      dilution: results.dilution.avg_btc_loan_dilution,
       ltvRisk: results.ltv.exceed_prob,
       roe: results.roe.avg_roe,
       runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12), // Cash reserves / monthly burn rate
@@ -50,7 +49,7 @@ const DecisionView = ({
     {
       id: 'option2',
       title: 'Convertible Note',
-      dilution: results.dilution.avg_dilution * 0.9, // Adjust for variation
+      dilution: results.dilution.avg_convertible_dilution,
       ltvRisk: results.ltv.exceed_prob * 0.8,
       roe: results.roe.avg_roe * 0.95,
       runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 1.1, // Slightly longer runway
@@ -62,7 +61,7 @@ const DecisionView = ({
     {
       id: 'option3',
       title: 'Hybrid Structure',
-      dilution: results.dilution.avg_dilution * 1.1,
+      dilution: results.dilution.avg_hybrid_dilution,
       ltvRisk: results.ltv.exceed_prob * 1.2,
       roe: results.roe.avg_roe * 1.05,
       runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 0.9, // Slightly shorter runway
@@ -142,7 +141,7 @@ const DecisionView = ({
                   title="Dilution"
                   value={option.dilution}
                   description="Equity dilution impact"
-                  tooltip="Dilution from new equity, adjusted by NAV paths"
+                  tooltip="Dilution from new equity or convertible debt, adjusted for structure"
                   icon={TrendingDown}
                   format="percentage"
                   darkMode={darkMode}
@@ -247,7 +246,6 @@ const DecisionView = ({
                     data={[entry]}
                     fill={['#10b981', '#3b82f6', '#CDA349'][index % 3]}
                     shape="circle"
-                    // Scale bubble size based on LTV risk (e.g., 10 to 50)
                     r={Math.max(10, Math.min(50, entry.ltvRisk * 100))}
                   />
                 ))}

@@ -37,7 +37,6 @@ const processLTVPaths = (ltv_paths) => {
 
   // Convert bins to array of objects with midpoint labels
   return bins.map((frequency, index) => ({
-    // Fix: Use toFixed(2) to handle floating-point precision issues
     ltv: (min_ltv + (index + 0.5) * bin_width).toFixed(2),
     frequency,
   }));
@@ -58,8 +57,10 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   dilution: {
     base_dilution: backendResults.dilution.base_dilution,
     avg_dilution: backendResults.dilution.avg_dilution,
-    structure_threshold_breached:
-      backendResults.dilution.structure_threshold_breached,
+    avg_btc_loan_dilution: backendResults.dilution.avg_btc_loan_dilution,
+    avg_convertible_dilution: backendResults.dilution.avg_convertible_dilution,
+    avg_hybrid_dilution: backendResults.dilution.avg_hybrid_dilution,
+    structure_threshold_breached: backendResults.dilution.structure_threshold_breached,
   },
   ltv: {
     avg_ltv: backendResults.ltv.avg_ltv,
@@ -73,12 +74,11 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
     bundle_value: backendResults.preferred_bundle.bundle_value,
   },
   btc_portfolio_value: backendResults.btc_holdings?.total_value || 
-                    (btc_treasury * btc_current_market_price),
+                      (btc_treasury * btc_current_market_price),
   target_metrics: {
     target_nav: backendResults.target_metrics.target_nav,
     target_ltv: backendResults.target_metrics.target_ltv,
-    target_convertible_value:
-      backendResults.target_metrics.target_convertible_value,
+    target_convertible_value: backendResults.target_metrics.target_convertible_value,
     target_roe: backendResults.target_metrics.target_roe,
     target_bundle_value: backendResults.target_metrics.target_bundle_value,
   },
