@@ -561,6 +561,16 @@ const AssumptionsPage = ({
                 className="text-[14px]"
                 extraLabel={mode === 'public' && <span className="ml-2 text-[#CDA349] text-xs">[SEC]</span>}
               />
+              <InputField
+                label="Annual Burn Rate"
+                value={assumptions.annual_burn_rate}
+                onChange={(val) => setAssumptions({ ...assumptions, annual_burn_rate: val })}
+                suffix="USD"
+                tooltip="Annual cash burn rate for calculating runway"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
               <HybridInput
                 label="Cost of Debt"
                 value={assumptions.cost_of_debt}

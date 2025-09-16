@@ -85,6 +85,7 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   scenario_metrics: backendResults.scenario_metrics,
   distribution_metrics: backendResults.distribution_metrics,
   optimized_param: backendResults.optimized_param || null,
+  runway: backendResults.runway || null,
 });
 
 export { mapResults, processLTVPaths };

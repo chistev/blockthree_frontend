@@ -24,9 +24,8 @@ const RunModelsPage = ({
     error,
 }) => {
     // Placeholder assumptions for missing data
-    const cashReserves = assumptions.new_equity_raised || 10000000; // Default to $10M if not provided
-    const annualBurnRate = 12000000; // Assume $1M/month burn rate
-    const runwayMonths = cashReserves / (annualBurnRate / 12); // Calculate runway
+    const runwayMonths = results?.runway?.runway_months || 0;
+    const annualBurnRate = results?.runway?.annual_burn_rate || 0;
     const totalDebt = assumptions.LoanPrincipal;
     const equityValue = assumptions.initial_equity_value + assumptions.new_equity_raised;
 
@@ -115,14 +114,6 @@ const RunModelsPage = ({
                             </p>
                             <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
                                 Projected BTC Holdings Value
-                            </p>
-                        </div>
-                        <div className="text-center">
-                            <p className={`text-[16px] font-medium ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
-                                ${(cashReserves / 1000000).toFixed(1)}M
-                            </p>
-                            <p className={`text-[14px] ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
-                                Cash Reserves
                             </p>
                         </div>
                         <div className="text-center">
