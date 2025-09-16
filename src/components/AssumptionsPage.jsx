@@ -599,6 +599,19 @@ const AssumptionsPage = ({
                 className="text-[14px]"
                 disabled={mode === 'public' && lockDefaults}
               />
+              <HybridInput
+                label="Minimum Profit Margin"
+                value={assumptions.min_profit_margin}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, min_profit_margin: val }))}
+                min={0.01}
+                max={0.5}
+                step={0.001}
+                suffix="%"
+                tooltip="Minimum acceptable profit margin for the loan"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
             </div>
           </div>
 
