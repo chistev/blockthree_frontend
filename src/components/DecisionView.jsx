@@ -28,11 +28,10 @@ const DecisionView = ({
   setDarkMode,
   setCurrentPage,
   results,
-  assumptions,
   setIsDocModalOpen,
   isDocModalOpen,
 }) => {
-  // Use server-provided dilution metrics
+  // Use server-provided dilution and runway metrics
   const options = [
     {
       id: 'option1',
@@ -40,7 +39,7 @@ const DecisionView = ({
       dilution: results.dilution.avg_btc_loan_dilution,
       ltvRisk: results.ltv.exceed_prob,
       roe: results.roe.avg_roe,
-      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12), // Cash reserves / monthly burn rate
+      runway: results.runway.btc_loan_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
         value: point.value,
@@ -52,7 +51,7 @@ const DecisionView = ({
       dilution: results.dilution.avg_convertible_dilution,
       ltvRisk: results.ltv.exceed_prob * 0.8,
       roe: results.roe.avg_roe * 0.95,
-      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 1.1, // Slightly longer runway
+      runway: results.runway.convertible_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
         value: point.value * 0.95,
@@ -64,7 +63,7 @@ const DecisionView = ({
       dilution: results.dilution.avg_hybrid_dilution,
       ltvRisk: results.ltv.exceed_prob * 1.2,
       roe: results.roe.avg_roe * 1.05,
-      runway: (assumptions.new_equity_raised || 10000000) / (12000000 / 12) * 0.9, // Slightly shorter runway
+      runway: results.runway.hybrid_runway_months, // Use server-provided runway
       sparklineData: results.nav.nav_paths.slice(0, 20).map((point, i) => ({
         time: i / 20,
         value: point.value * 1.05,
@@ -72,11 +71,11 @@ const DecisionView = ({
     },
   ];
 
-  // Data for comparative frontier chart
+  // Update scatterData to use structure-specific runways
   const scatterData = options.map((opt) => ({
     name: opt.title,
     dilution: opt.dilution * 100, // Convert to percentage
-    runway: opt.runway,
+    runway: opt.runway, // Use the structure-specific runway
     ltvRisk: opt.ltvRisk * 100, // For bubble size
   }));
 

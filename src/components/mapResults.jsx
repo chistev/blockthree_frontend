@@ -85,7 +85,13 @@ const mapResults = (backendResults, btc_treasury, btc_current_market_price) => (
   scenario_metrics: backendResults.scenario_metrics,
   distribution_metrics: backendResults.distribution_metrics,
   optimized_param: backendResults.optimized_param || null,
-  runway: backendResults.runway || null,
+  runway: {
+    annual_burn_rate: backendResults.runway.annual_burn_rate,
+    runway_months: backendResults.runway.runway_months,
+    btc_loan_runway_months: backendResults.runway.btc_loan_runway_months,
+    convertible_runway_months: backendResults.runway.convertible_runway_months,
+    hybrid_runway_months: backendResults.runway.hybrid_runway_months,
+  },
 });
 
 export { mapResults, processLTVPaths };
