@@ -17,8 +17,6 @@ import {
 import DocumentationModal from './DocumentationModal';
 import MetricCard from './MetricCard';
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   AreaChart,
@@ -42,7 +40,7 @@ const TermSheetPage = ({
   error,
   handleExport,
 }) => {
-  const [activeTab, setActiveTab] = useState('dilution_waterfall');
+  const [activeTab, setActiveTab] = useState('ltv_stress');
 
   // Helper function to generate scenario paths for LTV
   const generateScenarioPaths = (results, assumptions, metricType = 'ltv') => {
@@ -74,18 +72,6 @@ const TermSheetPage = ({
   // Generate LTV Paths
   const ltvPaths = generateScenarioPaths(results, assumptions, 'ltv');
 
-  // Generate Dilution Waterfall Data
-  const generateDilutionWaterfall = () => {
-    const dilution = results.dilution.base_dilution;
-    const avgDilution = results.dilution.avg_dilution;
-    return [
-      { name: 'Initial Equity', value: 100 },
-      { name: 'Base Dilution', value: -(dilution * 100) },
-      { name: 'Avg Dilution', value: -(avgDilution * 100 - dilution * 100) },
-      { name: 'Remaining Equity', value: 100 - avgDilution * 100 },
-    ];
-  };
-
   // Generate Runway Calculator Data
   const generateRunwayData = () => {
     const cashReserves = assumptions.new_equity_raised || 10000000;
@@ -108,30 +94,6 @@ const TermSheetPage = ({
   // Tab content rendering
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'dilution_waterfall':
-        return (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={generateDilutionWaterfall()} margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                <XAxis dataKey="name" stroke={darkMode ? '#D1D5DB' : '#334155'} />
-                <YAxis
-                  tickFormatter={(v) => `${v}%`}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                />
-                <Tooltip
-                  formatter={(value) => `${value.toFixed(1)}%`}
-                  contentStyle={
-                    darkMode
-                      ? { backgroundColor: '#1F2937', border: '1px solid #374151' }
-                      : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }
-                  }
-                />
-                <Bar dataKey="value" fill={darkMode ? '#CDA349' : '#0A1F44'} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        );
       case 'ltv_stress':
         return (
           <div className="h-64">
@@ -332,7 +294,6 @@ const TermSheetPage = ({
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
             <div className="flex flex-wrap gap-2 mb-4">
               {[
-                { id: 'dilution_waterfall', label: 'Dilution Waterfall' },
                 { id: 'ltv_stress', label: 'LTV Stress' },
                 { id: 'runway_calculator', label: 'Runway Calculator' },
               ].map((tab) => (
