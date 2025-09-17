@@ -59,6 +59,7 @@ const fetchBTCPrice = async (setAssumptions, setError, retries = 3, delay = 1000
     }
   }
 };
+
 const validateWhatIfInput = (param, value, setError) => {
   if (['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'initial_equity_value', 'IssuePrice', 'LoanPrincipal'].includes(param) && value <= 0) {
     setError(`${param} must be positive`);
@@ -94,12 +95,14 @@ const App = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationProgress, setCalculationProgress] = useState(0);
   const [error, setError] = useState(null);
-  const [assumptions, setAssumptions] = useState({}); // Initialize empty, to be set by API
+  const [assumptions, setAssumptions] = useState({});
   const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
   const [mode, setMode] = useState('manual');
   const [ticker, setTicker] = useState('');
+  const [isExportLoading, setIsExportLoading] = useState(false); // Track export loading state
+  const [exportType, setExportType] = useState(null); // Track export type (CSV or PDF)
 
   useEffect(() => {
     const initializeAssumptions = async () => {
@@ -265,6 +268,8 @@ const App = () => {
           isDocModalOpen={isDocModalOpen}
           error={error}
           handleExport={handleExport}
+          isExportLoading={isExportLoading} // Pass export loading state
+          exportType={exportType} // Pass export type
         />
       )}
       {currentPage === 'boardroom' && results && (

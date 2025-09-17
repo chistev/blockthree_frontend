@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Home,
   Sliders,
@@ -22,11 +21,12 @@ const TermSheetPage = ({
   setDarkMode,
   setCurrentPage,
   results,
-  assumptions,
   setIsDocModalOpen,
   isDocModalOpen,
   error,
   handleExport,
+  isExportLoading, // New prop
+  exportType, // New prop
 }) => {
   return (
     <div
@@ -178,21 +178,90 @@ const TermSheetPage = ({
       <div className="max-w-7xl mx-auto mt-6 flex gap-4">
         <button
           onClick={() => handleExport('csv')}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
+          disabled={isExportLoading}
+          className={`flex-1 px-6 py-3 rounded-[12px] text-[16px] font-medium flex items-center justify-center transition-colors ${
+            isExportLoading && exportType === 'CSV'
+              ? 'bg-gray-500 text-white cursor-not-allowed'
+              : 'bg-[#0A1F44] text-white hover:bg-[#1e3a8a]'
+          }`}
         >
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
+          {isExportLoading && exportType === 'CSV' ? (
+            <>
+              <svg
+                className="animate-spin h-4 w-4 mr-2"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+              Downloading CSV...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </>
+          )}
         </button>
         <button
           onClick={() => handleExport('pdf')}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
+          disabled={isExportLoading}
+          className={`flex-1 px-6 py-3 rounded-[12px] text-[16px] font-medium flex items-center justify-center transition-colors ${
+            isExportLoading && exportType === 'PDF'
+              ? 'bg-gray-500 text-white cursor-not-allowed'
+              : 'bg-[#0A1F44] text-white hover:bg-[#1e3a8a]'
+          }`}
         >
-          <FileText className="w-4 h-4 mr-2" />
-          Export PDF
+          {isExportLoading && exportType === 'PDF' ? (
+            <>
+              <svg
+                className="animate-spin h-4 w-4 mr-2"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+              Downloading PDF...
+            </>
+          ) : (
+            <>
+              <FileText className="w-4 h-4 mr-2" />
+              Export PDF
+            </>
+          )}
         </button>
         <button
           onClick={() => setCurrentPage('boardroom')}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors`}
+          disabled={isExportLoading}
+          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors ${
+            isExportLoading ? 'cursor-not-allowed opacity-50' : ''
+          }`}
         >
           <Briefcase className="w-4 h-4 mr-2" />
           Boardroom Mode
