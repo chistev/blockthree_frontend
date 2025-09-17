@@ -625,6 +625,77 @@ const AssumptionsPage = ({
             </div>
           </div>
 
+          {/* PIPE & ATM Parameters */}
+          <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
+            <h3 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+              PIPE & ATM Parameters
+            </h3>
+            <div className="space-y-4">
+              <HybridInput
+                label="PIPE Discount"
+                value={assumptions.PIPE_discount}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, PIPE_discount: val }))}
+                min={0}
+                max={0.2}
+                step={0.001}
+                suffix="%"
+                tooltip="Discount applied to the market price for PIPE shares"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+              <HybridInput
+                label="PIPE Warrant Coverage"
+                value={assumptions.PIPE_warrant_coverage}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, PIPE_warrant_coverage: val }))}
+                min={0}
+                max={0.5}
+                step={0.001}
+                suffix="%"
+                tooltip="Percentage of shares issued as warrants in PIPE"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+              <InputField
+                label="PIPE Lockup Period"
+                value={assumptions.PIPE_lockup_period}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, PIPE_lockup_period: val }))}
+                suffix="days"
+                tooltip="Lockup period for PIPE shares in days"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+              <HybridInput
+                label="ATM Issuance Cost"
+                value={assumptions.ATM_issuance_cost}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, ATM_issuance_cost: val }))}
+                min={0}
+                max={0.05}
+                step={0.001}
+                suffix="%"
+                tooltip="Cost of issuing shares in ATM offering"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+              <HybridInput
+                label="ATM Daily Capacity"
+                value={assumptions.ATM_daily_capacity}
+                onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, ATM_daily_capacity: val }))}
+                min={0}
+                max={0.5}
+                step={0.001}
+                suffix="%"
+                tooltip="Percentage of daily trading volume for ATM issuance"
+                darkMode={darkMode}
+                className="text-[14px]"
+                disabled={mode === 'public' && lockDefaults}
+              />
+            </div>
+          </div>
+
           {/* Advanced Parameters */}
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
             <h3 className={`text-[20px] font-semibold mb-4 ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
