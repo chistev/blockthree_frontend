@@ -21,12 +21,13 @@ const TermSheetPage = ({
   setDarkMode,
   setCurrentPage,
   results,
+  assumptions, // Added back to match original functionality
   setIsDocModalOpen,
   isDocModalOpen,
   error,
   handleExport,
-  isExportLoading, // New prop
-  exportType, // New prop
+  isExportLoading,
+  exportType,
 }) => {
   return (
     <div
@@ -174,7 +175,7 @@ const TermSheetPage = ({
         </div>
       </div>
 
-      {/* Export and Boardroom Buttons */}
+      {/* Export Buttons */}
       <div className="max-w-7xl mx-auto mt-6 flex gap-4">
         <button
           onClick={() => handleExport('csv')}
@@ -255,16 +256,6 @@ const TermSheetPage = ({
               Export PDF
             </>
           )}
-        </button>
-        <button
-          onClick={() => setCurrentPage('boardroom')}
-          disabled={isExportLoading}
-          className={`flex-1 px-6 py-3 bg-[#0A1F44] text-white rounded-[12px] text-[16px] font-medium hover:bg-[#1e3a8a] flex items-center justify-center transition-colors ${
-            isExportLoading ? 'cursor-not-allowed opacity-50' : ''
-          }`}
-        >
-          <Briefcase className="w-4 h-4 mr-2" />
-          Boardroom Mode
         </button>
       </div>
 

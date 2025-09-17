@@ -5,7 +5,6 @@ import AssumptionsPage from './components/AssumptionsPage';
 import RunModelsPage from './components/RunModelsPage';
 import DecisionView from './components/DecisionView';
 import TermSheetPage from './components/TermSheetPage';
-import BoardroomPage from './components/BoardroomPage';
 import './index.css';
 
 // API Utilities
@@ -270,17 +269,6 @@ const App = () => {
           handleExport={handleExport}
           isExportLoading={isExportLoading} // Pass export loading state
           exportType={exportType} // Pass export type
-        />
-      )}
-      {currentPage === 'boardroom' && results && (
-        <BoardroomPage
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-          setCurrentPage={setCurrentPage}
-          results={results}
-          assumptions={assumptions}
-          setIsDocModalOpen={setIsDocModalOpen}
-          isDocModalOpen={isDocModalOpen}
         />
       )}
     </>
