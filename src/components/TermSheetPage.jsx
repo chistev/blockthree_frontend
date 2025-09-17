@@ -42,10 +42,10 @@ const TermSheetPage = ({
   error,
   handleExport,
 }) => {
-  const [activeTab, setActiveTab] = useState('nav_paths');
+  const [activeTab, setActiveTab] = useState('dilution_waterfall');
 
-  // Helper function to generate scenario paths
-  const generateScenarioPaths = (results, assumptions, metricType = 'nav') => {
+  // Helper function to generate scenario paths for LTV
+  const generateScenarioPaths = (results, assumptions, metricType = 'ltv') => {
     const scenarios = results.scenario_metrics;
     const timeSteps = 100;
     const paths = {};
@@ -60,15 +60,7 @@ const TermSheetPage = ({
         const t = i / timeSteps;
         const interpolatedPrice = initialBTCPrice + t * (finalBTCPrice - initialBTCPrice);
 
-        if (metricType === 'nav') {
-          const collateralValue = totalBTC * interpolatedPrice;
-          const nav =
-            (collateralValue +
-              collateralValue * assumptions.delta -
-              assumptions.LoanPrincipal * assumptions.cost_of_debt) /
-            (assumptions.initial_equity_value + assumptions.new_equity_raised);
-          path.push({ time: t, value: nav });
-        } else if (metricType === 'ltv') {
+        if (metricType === 'ltv') {
           const ltv = assumptions.LoanPrincipal / (totalBTC * interpolatedPrice);
           path.push({ time: t, value: ltv });
         }
@@ -79,8 +71,7 @@ const TermSheetPage = ({
     return paths;
   };
 
-  // Generate NAV Paths and LTV Paths
-  const navPaths = generateScenarioPaths(results, assumptions, 'nav');
+  // Generate LTV Paths
   const ltvPaths = generateScenarioPaths(results, assumptions, 'ltv');
 
   // Generate Dilution Waterfall Data
@@ -117,51 +108,6 @@ const TermSheetPage = ({
   // Tab content rendering
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'nav_paths':
-        return (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                <XAxis
-                  dataKey="time"
-                  tickFormatter={(t) => `${(t * 100).toFixed(0)}%`}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                />
-                <YAxis
-                  domain={[0, 'auto']}
-                  tickFormatter={(v) => v.toFixed(2)}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                />
-                <Tooltip
-                  formatter={(value) => value.toFixed(2)}
-                  labelFormatter={(label) => `Time: ${(label * 100).toFixed(0)}%`}
-                  contentStyle={
-                    darkMode
-                      ? { backgroundColor: '#1F2937', border: '1px solid #374151' }
-                      : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }
-                  }
-                />
-                <Legend />
-                {Object.keys(navPaths).map(
-                  (scenario) =>
-                    navPaths[scenario] && (
-                      <Line
-                        key={scenario}
-                        type="monotone"
-                        dataKey="value"
-                        data={navPaths[scenario]}
-                        name={scenario}
-                        stroke={colors[scenario]}
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    )
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        );
       case 'dilution_waterfall':
         return (
           <div className="h-64">
@@ -386,7 +332,6 @@ const TermSheetPage = ({
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
             <div className="flex flex-wrap gap-2 mb-4">
               {[
-                { id: 'nav_paths', label: 'NAV Paths' },
                 { id: 'dilution_waterfall', label: 'Dilution Waterfall' },
                 { id: 'ltv_stress', label: 'LTV Stress' },
                 { id: 'runway_calculator', label: 'Runway Calculator' },
