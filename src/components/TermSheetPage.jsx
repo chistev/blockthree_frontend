@@ -19,14 +19,11 @@ import MetricCard from './MetricCard';
 import {
   LineChart,
   Line,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 
 const TermSheetPage = ({
@@ -40,37 +37,7 @@ const TermSheetPage = ({
   error,
   handleExport,
 }) => {
-  const [activeTab, setActiveTab] = useState('ltv_stress');
-
-  // Helper function to generate scenario paths for LTV
-  const generateScenarioPaths = (results, assumptions, metricType = 'ltv') => {
-    const scenarios = results.scenario_metrics;
-    const timeSteps = 100;
-    const paths = {};
-
-    Object.entries(scenarios).forEach(([scenarioName, metrics]) => {
-      const path = [];
-      const initialBTCPrice = assumptions.BTC_current_market_price;
-      const finalBTCPrice = metrics.btc_price;
-      const totalBTC = assumptions.BTC_treasury + assumptions.BTC_purchased;
-
-      for (let i = 0; i <= timeSteps; i++) {
-        const t = i / timeSteps;
-        const interpolatedPrice = initialBTCPrice + t * (finalBTCPrice - initialBTCPrice);
-
-        if (metricType === 'ltv') {
-          const ltv = assumptions.LoanPrincipal / (totalBTC * interpolatedPrice);
-          path.push({ time: t, value: ltv });
-        }
-      }
-      paths[scenarioName] = path;
-    });
-
-    return paths;
-  };
-
-  // Generate LTV Paths
-  const ltvPaths = generateScenarioPaths(results, assumptions, 'ltv');
+  const [activeTab, setActiveTab] = useState('runway_calculator');
 
   // Generate Runway Calculator Data
   const generateRunwayData = () => {
@@ -83,63 +50,9 @@ const TermSheetPage = ({
     return months.filter((d) => d.cash >= 0); // Only show non-negative cash
   };
 
-  // Colors for charts
-  const colors = {
-    'Bull Case': '#10b981',
-    'Base Case': '#3b82f6',
-    'Bear Case': '#ef4444',
-    'Stress Test': '#CDA349',
-  };
-
   // Tab content rendering
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'ltv_stress':
-        return (
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#E5E7EB'} />
-                <XAxis
-                  dataKey="time"
-                  tickFormatter={(t) => `${(t * 100).toFixed(0)}%`}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                />
-                <YAxis
-                  domain={[0, 1]}
-                  tickFormatter={(v) => `${(v * 100).toFixed(1)}%`}
-                  stroke={darkMode ? '#D1D5DB' : '#334155'}
-                />
-                <Tooltip
-                  formatter={(value) => `${(value * 100).toFixed(1)}%`}
-                  labelFormatter={(label) => `Time: ${(label * 100).toFixed(0)}%`}
-                  contentStyle={
-                    darkMode
-                      ? { backgroundColor: '#1F2937', border: '1px solid #374151' }
-                      : { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' }
-                  }
-                />
-                <Legend />
-                {Object.keys(ltvPaths).map(
-                  (scenario) =>
-                    ltvPaths[scenario] && (
-                      <Area
-                        key={scenario}
-                        type="monotone"
-                        dataKey="value"
-                        data={ltvPaths[scenario]}
-                        name={scenario}
-                        stroke={colors[scenario]}
-                        fill={colors[scenario]}
-                        fillOpacity={0.2}
-                        strokeWidth={2}
-                      />
-                    )
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        );
       case 'runway_calculator':
         return (
           <div className="h-64">
@@ -294,7 +207,6 @@ const TermSheetPage = ({
           <div className={`p-4 rounded-[12px] border ${darkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E5E7EB]'} shadow-[0_1px_4px_rgba(0,0,0,0.08)]`}>
             <div className="flex flex-wrap gap-2 mb-4">
               {[
-                { id: 'ltv_stress', label: 'LTV Stress' },
                 { id: 'runway_calculator', label: 'Runway Calculator' },
               ].map((tab) => (
                 <button
