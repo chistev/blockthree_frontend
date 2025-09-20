@@ -1,32 +1,100 @@
-import { Sun, Moon, Play } from 'lucide-react';
+import { Sun, Moon, Play, Upload } from 'lucide-react';
+import { useState } from 'react';
 
 const LandingPage = ({ darkMode, setDarkMode, setCurrentPage }) => {
+  const [mode, setMode] = useState('Public'); // State for mode toggle
+
+  const navLinks = ['Assumptions', 'Results', 'Term Sheet', 'What-If', 'Audit'];
+
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-[#111827]' : 'bg-[#F9FAFB]'} font-inter`}>
-      <header className={`px-4 sm:px-8 py-4 border-b ${darkMode ? 'border-[#374151]' : 'border-[#E5E7EB]'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-100'} font-inter`}>
+      <header className={`px-4 sm:px-8 py-4 border-b ${darkMode ? 'border-slate-900' : 'border-slate-100'}`}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+          {/* Logo */}
+          <h1
+            className={`text-[28px] font-semibold tracking-tight font-inter-tight ${
+              darkMode ? 'text-slate-100' : 'text-slate-900'
+            }`}
+          >
             Block Three Capital
           </h1>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-2 rounded-lg ${darkMode ? 'bg-[#374151] text-white' : 'bg-[#E5E7EB] text-[#0A1F44]'}`}
-          >
-            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center space-x-4">
+            {/* Global Navigation */}
+            <nav className="hidden sm:flex space-x-4">
+              {navLinks.map((link) => (
+                <button
+                  key={link}
+                  onClick={() => setCurrentPage(link.toLowerCase())}
+                  className={`text-[14px] ${
+                    darkMode ? 'text-slate-100 hover:text-emerald-500' : 'text-slate-900 hover:text-emerald-500'
+                  }`}
+                >
+                  {link}
+                </button>
+              ))}
+            </nav>
+            {/* Snapshot Lock Badge */}
+            <div className="flex items-center space-x-2">
+              <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
+              <span className={`text-[12px] ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                Snapshot: #ABC123
+              </span>
+            </div>
+            {/* Mode Toggle */}
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className={`text-[14px] p-2 rounded-lg ${
+                darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'
+              }`}
+            >
+              <option value="Public">Public</option>
+              <option value="Private">Private</option>
+              <option value="Pro-Forma">Pro-Forma</option>
+            </select>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-lg ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'}`}
+            >
+              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            {/* Import/Upload Button */}
+            <button
+              className={`p-2 rounded-lg ${
+                darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'
+              }`}
+            >
+              <Upload className="w-5 h-5" />
+            </button>
+            {/* Lock & Run Button */}
+            <button
+              className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-[14px] font-medium hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
+            >
+              Lock & Run
+            </button>
+          </div>
         </div>
       </header>
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)] px-4 sm:px-8">
         <div className="text-center max-w-2xl">
-          <h1 className={`text-3xl sm:text-4xl font-semibold ${darkMode ? 'text-white' : 'text-[#0A1F44]'}`}>
+          <h1
+            className={`text-[28px] font-semibold tracking-tight font-inter-tight ${
+              darkMode ? 'text-slate-100' : 'text-slate-900'
+            }`}
+          >
             Precision Treasury Structuring for Bitcoin Institutions
           </h1>
-          <p className={`text-lg mt-4 ${darkMode ? 'text-[#9CA3AF]' : 'text-[#334155]'}`}>
+          <p
+            className={`text-[16px] mt-4 ${
+              darkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}
+          >
             Optimize BTC treasuries with elite models for NAV audit, dilution mitigation, convertibles, LTV loans, and ROE optimization.
           </p>
           <button
             onClick={() => setCurrentPage('assumptions')}
-            className="mt-6 bg-[#0A1F44] text-white px-6 py-3 rounded-lg text-base font-medium hover:bg-[#1e3a8a] transition-colors flex items-center mx-auto"
+            className="mt-6 bg-emerald-500 text-white px-6 py-3 rounded-lg text-[14px] font-medium hover:bg-emerald-600 active:bg-emerald-700 transition-colors flex items-center mx-auto"
           >
             <Play className="w-4 h-4 mr-2" />
             Get Started
