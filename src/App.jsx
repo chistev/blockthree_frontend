@@ -10,7 +10,7 @@ import './index.css';
 // API Utilities
 const fetchDefaultParams = async (setAssumptions, setError) => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/default_params/', {
+    const response = await fetch('https://cperez.pythonanywhere.com/api/default_params/', {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -28,7 +28,7 @@ const fetchDefaultParams = async (setAssumptions, setError) => {
 const fetchBTCPrice = async (setAssumptions, setError, retries = 3, delay = 1000) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/btc_price/', {
+      const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -90,7 +90,7 @@ const getSavedConfigurations = () => {
 
 const lockSnapshot = async (assumptions, mode, setError) => {
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/lock_snapshot/', {
+    const response = await fetch('https://cperez.pythonanywhere.com/api/lock_snapshot/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assumptions, mode }),
@@ -133,7 +133,7 @@ const App = () => {
 
   const handleAPIRequest = async (endpoint, body, setLoading, errorMessage) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -200,7 +200,7 @@ const App = () => {
       body.param = param;
       body.value = value;
     }
-    const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+    const response = await fetch(`https://cperez.pythonanywhere.com${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

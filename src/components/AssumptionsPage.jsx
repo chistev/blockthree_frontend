@@ -39,7 +39,7 @@ const AssumptionsPage = ({
   useEffect(() => {
     const fetchPresets = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/presets/');
+        const response = await fetch('https://cperez.pythonanywhere.com/api/presets/');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         setPresets(data); // Store presets from server
@@ -76,7 +76,7 @@ const AssumptionsPage = ({
     if (mode === 'public') {
       const fetchBTCPrice = async () => {
         try {
-          const response = await fetch('http://127.0.0.1:8000/api/btc_price/');
+          const response = await fetch('https://cperez.pythonanywhere.com/api/btc_price/');
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
           if (data.BTC_current_market_price) {
@@ -197,7 +197,7 @@ const AssumptionsPage = ({
     formData.append('ticker', ticker);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/upload_sec_data/', {
+      const response = await fetch('https://cperez.pythonanywhere.com/api/upload_sec_data/', {
         method: 'POST',
         body: formData,
       });
@@ -238,7 +238,7 @@ const AssumptionsPage = ({
     setSuccessMessage(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/fetch_sec_data/', {
+      const response = await fetch('https://cperez.pythonanywhere.com/api/fetch_sec_data/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker }),
