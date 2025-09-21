@@ -701,7 +701,7 @@ const AssumptionsPage = ({
                   value={(assumptions.annual_burn_rate ? assumptions.initial_equity_value / assumptions.annual_burn_rate : 0).toFixed(2)}
                   onChange={null}
                   suffix="months"
-                  tooltip="Minimum months of cash liquidity before insolvency"
+                  tooltip="Simplified estimate of months of cash liquidity before insolvency. Backend calculations account for additional factors like cash flows, capital expenditures, and interest."
                   darkMode={darkMode}
                   className="text-[14px] font-roboto-mono"
                   disabled={true}
@@ -807,78 +807,6 @@ const AssumptionsPage = ({
                       max={0.7}
                       step={0.01}
                       tooltip="Long-run volatility of BTC"
-                      darkMode={darkMode}
-                      className="text-[14px] font-roboto-mono"
-                      disabled={mode === 'public' && lockDefaults}
-                      extraLabel={
-                        mode === 'public' && lockDefaults && (
-                          <span
-                            className={`ml-2 text-[12px] font-inter rounded-full px-2 py-1 ${darkMode ? 'bg-gray-400 text-slate-900' : 'bg-gray-400 text-slate-900'}`}
-                          >
-                            Imputed
-                          </span>
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Jump Parameters */}
-                <div>
-                  <h4 className={`text-[18px] font-semibold font-inter-tight mb-2 ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                    Jump Parameters
-                  </h4>
-                  <div className="space-y-4">
-                    <InputField
-                      label="Jump Intensity"
-                      value={assumptions.jump_intensity}
-                      onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_intensity: val }))}
-                      min={0}
-                      max={0.5}
-                      step={0.01}
-                      tooltip="Intensity of price jumps in BTC"
-                      darkMode={darkMode}
-                      className="text-[14px] font-roboto-mono"
-                      disabled={mode === 'public' && lockDefaults}
-                      extraLabel={
-                        mode === 'public' && lockDefaults && (
-                          <span
-                            className={`ml-2 text-[12px] font-inter rounded-full px-2 py-1 ${darkMode ? 'bg-gray-400 text-slate-900' : 'bg-gray-400 text-slate-900'}`}
-                          >
-                            Imputed
-                          </span>
-                        )
-                      }
-                    />
-                    <InputField
-                      label="Jump Mean"
-                      value={assumptions.jump_mean}
-                      onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_mean: val }))}
-                      min={-0.5}
-                      max={0.5}
-                      step={0.01}
-                      tooltip="Mean of price jumps in BTC"
-                      darkMode={darkMode}
-                      className="text-[14px] font-roboto-mono"
-                      disabled={mode === 'public' && lockDefaults}
-                      extraLabel={
-                        mode === 'public' && lockDefaults && (
-                          <span
-                            className={`ml-2 text-[12px] font-inter rounded-full px-2 py-1 ${darkMode ? 'bg-gray-400 text-slate-900' : 'bg-gray-400 text-slate-900'}`}
-                          >
-                            Imputed
-                          </span>
-                        )
-                      }
-                    />
-                    <InputField
-                      label="Jump Volatility"
-                      value={assumptions.jump_volatility}
-                      onChange={(val) => (mode === 'public' && lockDefaults ? null : setAssumptions({ ...assumptions, jump_volatility: val }))}
-                      min={0}
-                      max={0.5}
-                      step={0.01}
-                      tooltip="Volatility of price jumps in BTC"
                       darkMode={darkMode}
                       className="text-[14px] font-roboto-mono"
                       disabled={mode === 'public' && lockDefaults}
