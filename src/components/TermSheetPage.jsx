@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import DocumentationModal from './DocumentationModal';
 import MetricCard from './MetricCard';
-import { HistogramChart, XAxis, YAxis, CartesianGrid, Tooltip, Bar, ResponsiveContainer } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Bar, ResponsiveContainer } from 'recharts';
 import { LineChart, Line } from 'recharts';
 
 const TermSheetPage = ({

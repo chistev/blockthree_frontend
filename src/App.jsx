@@ -88,6 +88,23 @@ const getSavedConfigurations = () => {
   }
 };
 
+const lockSnapshot = async (assumptions, mode, setError) => {
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/lock_snapshot/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assumptions, mode }),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return data.snapshot_id;
+  } catch (err) {
+    console.error('Failed to lock snapshot:', err);
+    setError('Failed to lock snapshot. Please try again.');
+    return null;
+  }
+};
+
 const App = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [currentPage, setCurrentPage] = useState('landing');
@@ -102,6 +119,7 @@ const App = () => {
   const [ticker, setTicker] = useState('');
   const [isExportLoading, setIsExportLoading] = useState(false); // Track export loading state
   const [exportType, setExportType] = useState(null); // Track export type (CSV or PDF)
+  const [snapshotId, setSnapshotId] = useState(null);
 
   useEffect(() => {
     const initializeAssumptions = async () => {
@@ -137,6 +155,14 @@ const App = () => {
     setCalculationProgress(0);
     setError(null);
 
+     // Lock snapshot before calculation
+    const snapshot_id = await lockSnapshot(assumptions, mode, setError);
+    if (!snapshot_id) {
+      setIsCalculating(false);
+      return;
+    }
+    setSnapshotId(snapshot_id); // Store snapshot ID
+
     const progressInterval = setInterval(() => {
       setCalculationProgress(prev => Math.min(prev + 10, 90));
     }, 200);
@@ -144,7 +170,7 @@ const App = () => {
     try {
       const backendResults = await handleAPIRequest(
         '/api/calculate/',
-        { assumptions, format: 'json', use_live: true },
+        { assumptions, format: 'json', use_live: true, snapshot_id },
         setIsCalculating,
         'Failed to run models. Please try again.'
       );
@@ -229,6 +255,7 @@ const App = () => {
           mode={mode}
           setMode={setMode}
           handleCalculate={handleCalculate}
+          snapshotId={snapshotId}
         />
       )}
       {currentPage === 'runModels' && results && (

@@ -1,10 +1,7 @@
-import { Sun, Moon, Play, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { Sun, Moon, Play } from 'lucide-react';
 
 const LandingPage = ({ darkMode, setDarkMode, setCurrentPage }) => {
-  const [mode, setMode] = useState('Public'); // State for mode toggle
-
-  const navLinks = ['Assumptions', 'Results', 'Term Sheet', 'What-If', 'Audit'];
+  const navLinks = ['Audit'];
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-100'} font-inter`}>
@@ -33,45 +30,12 @@ const LandingPage = ({ darkMode, setDarkMode, setCurrentPage }) => {
                 </button>
               ))}
             </nav>
-            {/* Snapshot Lock Badge */}
-            <div className="flex items-center space-x-2">
-              <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
-              <span className={`text-[12px] ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-                Snapshot: #ABC123
-              </span>
-            </div>
-            {/* Mode Toggle */}
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value)}
-              className={`text-[14px] p-2 rounded-lg ${
-                darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'
-              }`}
-            >
-              <option value="Public">Public</option>
-              <option value="Private">Private</option>
-              <option value="Pro-Forma">Pro-Forma</option>
-            </select>
             {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
               className={`p-2 rounded-lg ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'}`}
             >
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            {/* Import/Upload Button */}
-            <button
-              className={`p-2 rounded-lg ${
-                darkMode ? 'bg-slate-800 text-slate-100' : 'bg-slate-200 text-slate-900'
-              }`}
-            >
-              <Upload className="w-5 h-5" />
-            </button>
-            {/* Lock & Run Button */}
-            <button
-              className="bg-emerald-500 text-white px-4 py-2 rounded-lg text-[14px] font-medium hover:bg-emerald-600 active:bg-emerald-700 transition-colors"
-            >
-              Lock & Run
             </button>
           </div>
         </div>
