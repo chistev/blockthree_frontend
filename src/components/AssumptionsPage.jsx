@@ -256,39 +256,39 @@ const AssumptionsPage = ({
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className={`flex flex-col sm:flex-row justify-between items-center mb-6 border-b ${darkMode ? 'border-slate-900' : 'border-slate-100'} pb-4`}>
-  <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-    <button
-      onClick={() => setCurrentPage('landing')}
-      className={`p-2 rounded-lg flex items-center text-sm font-inter ${darkMode ? 'bg-slate-800 text-slate-100 hover:bg-slate-700' : 'bg-slate-200 text-slate-900 hover:bg-slate-300'} transform hover:scale-101 transition-transform`}
-      title="Back to Home"
-    >
-      <Home className="w-4 h-4 mr-1" />
-      Home
-    </button>
-    <div>
-      <h1 className={`text-[28px] font-semibold tracking-tight font-inter-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-        Model Assumptions
-      </h1>
-      <p className={`text-[14px] font-inter ${darkMode ? 'text-slate-400' : 'text-slate-600'} mt-1`}>
-        Configure parameters for risk analysis and treasury optimization
-      </p>
-    </div>
-  </div>
-  <div className="flex items-center space-x-4">
-    <div className="flex items-center space-x-2">
-      <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
-      <span className={`text-[12px] font-inter ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
-        Snapshot: #{snapshotId || 'N/A'}
-      </span>
-    </div>
-    <button
-      onClick={() => setDarkMode(!darkMode)}
-      className={`p-2 rounded-lg ${darkMode ? 'bg-slate-800 text-slate-100 hover:bg-slate-700' : 'bg-slate-200 text-slate-900 hover:bg-slate-300'} transform hover:scale-101 transition-transform`}
-    >
-      {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-    </button>
-  </div>
-</div>
+          <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+            <button
+              onClick={() => setCurrentPage('landing')}
+              className={`p-2 rounded-lg flex items-center text-sm font-inter ${darkMode ? 'bg-slate-800 text-slate-100 hover:bg-slate-700' : 'bg-slate-200 text-slate-900 hover:bg-slate-300'} transform hover:scale-101 transition-transform`}
+              title="Back to Home"
+            >
+              <Home className="w-4 h-4 mr-1" />
+              Home
+            </button>
+            <div>
+              <h1 className={`text-[28px] font-semibold tracking-tight font-inter-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                Model Assumptions
+              </h1>
+              <p className={`text-[14px] font-inter ${darkMode ? 'text-slate-400' : 'text-slate-600'} mt-1`}>
+                Configure parameters for risk analysis and treasury optimization
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <span className="h-2 w-2 bg-emerald-500 rounded-full"></span>
+              <span className={`text-[12px] font-inter ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                Snapshot: #{snapshotId || 'N/A'}
+              </span>
+            </div>
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-lg ${darkMode ? 'bg-slate-800 text-slate-100 hover:bg-slate-700' : 'bg-slate-200 text-slate-900 hover:bg-slate-300'} transform hover:scale-101 transition-transform`}
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
 
         {/* Top Bar: Mode Toggle, Ticker Lookup, File Upload */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -372,7 +372,13 @@ const AssumptionsPage = ({
                 Switch to Manual Mode
               </button>{' '}
               or{' '}
-              <button onClick={() => setLockDefaults(false)} className="underline">
+              <button
+                onClick={() => {
+                  setLockDefaults(false);
+                  setSuccessMessage('Default parameters unlocked successfully.');
+                }}
+                className="underline"
+              >
                 unlock defaults
               </button>{' '}
               to edit all parameters.
