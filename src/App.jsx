@@ -175,7 +175,7 @@ const App = () => {
       setIsCalculating,
       'Failed to run models. Please try again.'
     );
-    setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
+   setResults(backendResults); // store raw backend response
     setCalculationProgress(100);
     setCurrentPage('decision');
   } finally {
