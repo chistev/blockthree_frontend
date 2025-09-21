@@ -33,6 +33,28 @@ const AssumptionsPage = ({
   const [successMessage, setSuccessMessage] = useState(null);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [objectivePreset, setObjectivePreset] = useState('Balanced');
+  const [presets, setPresets] = useState({}); // State to store server-side presets
+
+  // Fetch presets on component mount
+  useEffect(() => {
+    const fetchPresets = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/presets/');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        setPresets(data); // Store presets from server
+      } catch (error) {
+        console.error('Error fetching presets:', error);
+        // Fallback to default presets in case of error
+        setPresets({
+          Defensive: { LTV_Cap: 0.5, min_profit_margin: 0.2, mu: 0.3, sigma: 0.4 },
+          Balanced: { LTV_Cap: 0.7, min_profit_margin: 0.1, mu: 0.45, sigma: 0.6 },
+          Growth: { LTV_Cap: 0.9, min_profit_margin: 0.05, mu: 0.6, sigma: 0.8 },
+        });
+      }
+    };
+    fetchPresets();
+  }, []);
 
   // Sync localSavedConfigs with savedConfigs
   useEffect(() => {
@@ -79,16 +101,13 @@ const AssumptionsPage = ({
   // Handle objective preset changes
   useEffect(() => {
     if (mode === 'public' && lockDefaults) return;
-    const presets = {
-      Defensive: { LTV_Cap: 0.5, min_profit_margin: 0.2, mu: 0.3, sigma: 0.4 },
-      Balanced: { LTV_Cap: 0.7, min_profit_margin: 0.1, mu: 0.45, sigma: 0.6 },
-      Growth: { LTV_Cap: 0.9, min_profit_margin: 0.05, mu: 0.6, sigma: 0.8 },
-    };
-    setAssumptions((prev) => ({
-      ...prev,
-      ...presets[objectivePreset],
-    }));
-  }, [objectivePreset, mode, lockDefaults, setAssumptions]);
+    if (presets[objectivePreset]) {
+      setAssumptions((prev) => ({
+        ...prev,
+        ...presets[objectivePreset],
+      }));
+    }
+  }, [objectivePreset, mode, lockDefaults, setAssumptions, presets]);
 
   // Save, load, and delete configuration functions
   const saveConfiguration = (assumptions, configName, setSavedConfigs, setError) => {
