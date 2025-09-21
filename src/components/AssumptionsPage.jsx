@@ -319,8 +319,8 @@ const AssumptionsPage = ({
               Public/SEC Mode
             </button>
             <button
-              onClick={() => setMode('manual')}
-              className={`px-4 py-2 rounded-full text-[14px] font-medium font-inter ${mode === 'manual' ? 'bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700' : 'bg-gray-400 text-slate-900 hover:bg-gray-500 active:bg-gray-600'} transform hover:scale-101 transition-transform`}
+              onClick={() => setMode('private')}
+              className={`px-4 py-2 rounded-full text-[14px] font-medium font-inter ${mode === 'private' ? 'bg-emerald-500 text-white hover:bg-emerald-600 active:bg-emerald-700' : 'bg-gray-400 text-slate-900 hover:bg-gray-500 active:bg-gray-600'} transform hover:scale-101 transition-transform`}
             >
               Manual Mode
             </button>
@@ -387,8 +387,8 @@ const AssumptionsPage = ({
           <div className={`p-4 rounded-2xl bg-amber-100 border border-amber-300 text-amber-500 text-[14px] font-inter mb-4`}>
             <p>
               Using default values for non-SEC parameters (e.g., BTC Treasury, LTV Cap).{' '}
-              <button onClick={() => setMode('manual')} className="underline">
-                Switch to Manual Mode
+              <button onClick={() => setMode('private')} className="underline">
+                Switch to Private Mode
               </button>{' '}
               or{' '}
               <button

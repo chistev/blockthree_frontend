@@ -115,7 +115,7 @@ const App = () => {
   const [results, setResults] = useState(null);
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState(getSavedConfigurations());
-  const [mode, setMode] = useState('manual');
+  const [mode, setMode] = useState('private');
   const [ticker, setTicker] = useState('');
   const [isExportLoading, setIsExportLoading] = useState(false); // Track export loading state
   const [exportType, setExportType] = useState(null); // Track export type (CSV or PDF)
@@ -151,40 +151,41 @@ const App = () => {
   };
 
   const handleCalculate = async () => {
-    setIsCalculating(true);
-    setCalculationProgress(0);
-    setError(null);
+  setIsCalculating(true);
+  setCalculationProgress(0);
+  setError(null);
 
-     // Lock snapshot before calculation
-    const snapshot_id = await lockSnapshot(assumptions, mode, setError);
-    if (!snapshot_id) {
+  const snapshot_id = await lockSnapshot(assumptions, mode, setError);
+  if (!snapshot_id) {
+    setIsCalculating(false);
+    return;
+  }
+  // Only update snapshotId if it's different
+  setSnapshotId((prev) => (prev !== snapshot_id ? snapshot_id : prev));
+
+  // Rest of the function remains unchanged
+  const progressInterval = setInterval(() => {
+    setCalculationProgress(prev => Math.min(prev + 10, 90));
+  }, 200);
+
+  try {
+    const backendResults = await handleAPIRequest(
+      '/api/calculate/',
+      { assumptions, format: 'json', use_live: true, snapshot_id },
+      setIsCalculating,
+      'Failed to run models. Please try again.'
+    );
+    setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
+    setCalculationProgress(100);
+    setCurrentPage('decision');
+  } finally {
+    clearInterval(progressInterval);
+    setTimeout(() => {
       setIsCalculating(false);
-      return;
-    }
-    setSnapshotId(snapshot_id); // Store snapshot ID
-
-    const progressInterval = setInterval(() => {
-      setCalculationProgress(prev => Math.min(prev + 10, 90));
-    }, 200);
-
-    try {
-      const backendResults = await handleAPIRequest(
-        '/api/calculate/',
-        { assumptions, format: 'json', use_live: true, snapshot_id },
-        setIsCalculating,
-        'Failed to run models. Please try again.'
-      );
-      setResults(mapResults(backendResults, assumptions.BTC_treasury, assumptions.BTC_current_market_price));
-      setCalculationProgress(100);
-      setCurrentPage('runModels');
-    } finally {
-      clearInterval(progressInterval);
-      setTimeout(() => {
-        setIsCalculating(false);
-        setCalculationProgress(0);
-      }, 500);
-    }
-  };
+      setCalculationProgress(0);
+    }, 500);
+  }
+};
 
   const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
     if (param && value && !validateWhatIfInput(param, value, setError)) return;
