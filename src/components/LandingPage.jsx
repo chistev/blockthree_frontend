@@ -1,7 +1,7 @@
 import { Sun, Moon, Play } from 'lucide-react';
 
 const LandingPage = ({ darkMode, setDarkMode, setCurrentPage }) => {
-  const navLinks = ['Audit'];
+  const navLinks = [''];
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-slate-900' : 'bg-slate-100'} font-inter`}>
