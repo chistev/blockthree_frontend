@@ -151,81 +151,80 @@ const App = () => {
   };
 
   const handleCalculate = async () => {
-  setIsCalculating(true);
-  setCalculationProgress(0);
-  setError(null);
-
-  const snapshot_id = await lockSnapshot(assumptions, mode, setError);
-  if (!snapshot_id) {
-    setIsCalculating(false);
-    return;
-  }
-  // Only update snapshotId if it's different
-  setSnapshotId((prev) => (prev !== snapshot_id ? snapshot_id : prev));
-
-  // Rest of the function remains unchanged
-  const progressInterval = setInterval(() => {
-    setCalculationProgress(prev => Math.min(prev + 10, 90));
-  }, 200);
-
-  try {
-    const backendResults = await handleAPIRequest(
-      '/api/calculate/',
-      { assumptions, format: 'json', use_live: true, snapshot_id },
-      setIsCalculating,
-      'Failed to run models. Please try again.'
-    );
-   setResults(backendResults); // store raw backend response
-    setCalculationProgress(100);
-    setCurrentPage('decision');
-  } finally {
-    clearInterval(progressInterval);
-    setTimeout(() => {
-      setIsCalculating(false);
-      setCalculationProgress(0);
-    }, 500);
-  }
-};
-
-  const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
-    if (param && value && !validateWhatIfInput(param, value, setError)) return;
-
-    setIsExportLoading(true);
-    setExportType(format.toUpperCase());
+    setIsCalculating(true);
+    setCalculationProgress(0);
     setError(null);
 
-    try {
-      const body = { assumptions, format, use_live: true };
-      if (param && value) {
-        body.param = param;
-        body.value = value;
-      }
-      const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const snapshot_id = await lockSnapshot(assumptions, mode, setError);
+    if (!snapshot_id) {
+      setIsCalculating(false);
+      return;
+    }
+    // Only update snapshotId if it's different
+    setSnapshotId((prev) => (prev !== snapshot_id ? snapshot_id : prev));
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `metrics.${format}`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(`Export ${format} failed:`, err);
-      setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
+    // Rest of the function remains unchanged
+    const progressInterval = setInterval(() => {
+      setCalculationProgress(prev => Math.min(prev + 10, 90));
+    }, 200);
+
+    try {
+      const backendResults = await handleAPIRequest(
+        '/api/calculate/',
+        { assumptions, format: 'json', use_live: true, snapshot_id },
+        setIsCalculating,
+        'Failed to run models. Please try again.'
+      );
+      setResults(backendResults); // store raw backend response
+      setCalculationProgress(100);
+      setCurrentPage('decision');
     } finally {
+      clearInterval(progressInterval);
       setTimeout(() => {
-        setIsExportLoading(false);
-        setExportType(null);
+        setIsCalculating(false);
+        setCalculationProgress(0);
       }, 500);
     }
   };
+
+  const handleExport = async (format, endpoint = '/api/calculate/', param = null, value = null) => {
+  if (param && value && !validateWhatIfInput(param, value, setError)) return;
+
+  setIsExportLoading(true);
+  setExportType(format.toUpperCase());
+  setError(null);
+
+  try {
+    const body = { assumptions, format, use_live: true, snapshot_id: snapshotId }; // Always include snapshot_id
+    if (param && value) {
+      body.param = param;
+      body.value = value;
+    }
+    const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `metrics.${format}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(`Export ${format} failed:`, err);
+    setError(`Failed to export ${format.toUpperCase()}. Please try again.`);
+  } finally {
+    setTimeout(() => {
+      setIsExportLoading(false);
+      setExportType(null);
+    }, 500);
+  }
+};
 
   return (
     <>
@@ -282,6 +281,9 @@ const App = () => {
           assumptions={assumptions}
           setIsDocModalOpen={setIsDocModalOpen}
           isDocModalOpen={isDocModalOpen}
+          handleExport={handleExport} // Add this
+          isExportLoading={isExportLoading} // Add this
+          exportType={exportType} // Add this
         />
       )}
       {currentPage === 'termSheet' && results && (

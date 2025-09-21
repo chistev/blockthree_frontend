@@ -1,4 +1,3 @@
-import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -22,7 +21,31 @@ const median = (arr) => {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 };
 
-const DecisionView = ({ darkMode, setCurrentPage, results, assumptions }) => {
+// Simple CSS spinner component
+const Spinner = () => (
+  <svg
+    className="animate-spin h-5 w-5 text-white inline-block mr-2"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+  >
+    <circle
+      className="opacity-25"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="currentColor"
+      strokeWidth="4"
+    ></circle>
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+    ></path>
+  </svg>
+);
+
+const DecisionView = ({ darkMode, setCurrentPage, results, assumptions, handleExport, isExportLoading, exportType }) => {
   if (!results || !results.metrics) {
     return (
       <div className={`min-h-screen p-6 ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-100 text-black'}`}>
@@ -131,7 +154,7 @@ const DecisionView = ({ darkMode, setCurrentPage, results, assumptions }) => {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation and Export Buttons */}
         <div className="mt-8 flex space-x-4">
           <button
             onClick={() => setCurrentPage('assumptions')}
@@ -140,10 +163,32 @@ const DecisionView = ({ darkMode, setCurrentPage, results, assumptions }) => {
             ← Back to Assumptions
           </button>
           <button
-            onClick={() => setCurrentPage('termSheet')}
-            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+            onClick={() => handleExport('csv')}
+            disabled={isExportLoading}
+            className={`px-4 py-2 flex items-center ${
+              isExportLoading && exportType === 'CSV'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white rounded-lg`}
+            aria-label={isExportLoading && exportType === 'CSV' ? 'Exporting CSV, please wait' : 'Export to CSV'}
+            aria-busy={isExportLoading && exportType === 'CSV'}
           >
-            View Term Sheet →
+            {isExportLoading && exportType === 'CSV' && <Spinner />}
+            {isExportLoading && exportType === 'CSV' ? 'Exporting CSV...' : 'Export to CSV'}
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={isExportLoading}
+            className={`px-4 py-2 flex items-center ${
+              isExportLoading && exportType === 'PDF'
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white rounded-lg`}
+            aria-label={isExportLoading && exportType === 'PDF' ? 'Exporting PDF, please wait' : 'Export to PDF'}
+            aria-busy={isExportLoading && exportType === 'PDF'}
+          >
+            {isExportLoading && exportType === 'PDF' && <Spinner />}
+            {isExportLoading && exportType === 'PDF' ? 'Exporting PDF...' : 'Export to PDF'}
           </button>
         </div>
       </div>
